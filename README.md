@@ -18,7 +18,7 @@ Published May, 2021
 ## Setup
 
 ```bash
-conda create --name hyp pip python=3.9
+conda create --name hyp pip python=3.8
 conda activate hyp
 python -m pip install -r requirements.txt
 ```
@@ -69,7 +69,7 @@ python -m pip install -r requirements.txt
 - [Overview of Topics](#overview-of-topics)
 - [Table of Contents](#table-of-contents)
 - [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
-- [Section 3](#section-3)
+- [Section 3: Performance Metrics](#section-3-performance-metrics)
 - [Section 4](#section-4)
 - [Section 5](#section-5)
 - [Section 6](#section-6)
@@ -83,9 +83,53 @@ python -m pip install -r requirements.txt
 
 ## Section 2: Hyperparameter Tuning: Overview
 
+Hyperparameters are those parameters which are not learnt during taining, but chosen by the user. They can be used to:
+
+- Improve convergence
+- Improve performance
+- Prevent overfitting
+- etc.
+
+However, the hyperparameters affect the parameters learnt by the model.
+
+Typical hyperparameters for Random Forests and Gradient Boosted Trees:
+
+- Number of trees
+- The depth of the tree
+- Learning rate (GBMs)
+- The metric of split quality
+- The number of features to evaluate at each node
+- The minimum number of samples to split the data further
+
+The most important hyperparameters are those that optimize the generalization error, which is not necessarily the loss.
+
+Some hyperparameters do not affect the model performance; we need to try all possible value combinations, but that comes with an inrceased computational cost.
+
+A hyperparameter search consists of:
+
+- Hyperparameter space: the hyperparameters we are going to test and their possible values.
+- A method for sampling candidate hyperparameters
+  - Manual Search
+  - Grid Search
+  - Random Search
+  - Bayesian Optimization
+  - Other
+- A cross-validation scheme
+- A performance metric to minimize (or maximize)
+
+Two important concepts that come up often when talking about hyperparameters optimization:
+
+- **Hyperparameter response surface**: that's the value of the decision metric as function of the hyperparameter values; we want to minimize it. Notation: `lambda = argmin(Phi(lambda))`, i.e., `lambda` are the hyperparameter values and `Phi(lambda)` is the response surface, i.e., the decision metric.
+- **Low effective dimension**: the repsonse surface is very sensitive to some hyperparameters and it doesn't change with others; we want to find which hyperparameters affect `Phi`.
+
+We can evaluate these two concepts, e.g., when we use the `GridSearchCV` from Scikit-Learn. These notebooks show how to do that:
+
+- [`02-01-Response-Surface.ipynb`](./Section-02-Hyperparamter-Overview/02-01-Response-Surface.ipynb)
+- [`02-02-Low-Effective-Dimension.ipynb`](./Section-02-Hyperparamter-Overview/02-02-Low-Effective-Dimension.ipynb)
+
+## Section 3: Performance Metrics
 
 
-## Section 3
 
 
 
