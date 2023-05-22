@@ -83,6 +83,8 @@ python -m pip install -r requirements.txt
 
 ## Section 2: Hyperparameter Tuning: Overview
 
+
+
 ## Section 3
 
 
@@ -125,7 +127,7 @@ python -m pip install -r requirements.txt
 
 ## Section 13: Ax Platform
 
-This section was added by me.
+This section was not in the original course and it was added by me; it introduces [Ax, the Adaptive Experimentation Platform](https://ax.dev/).
 
-[Adaptive Experimentation Platform](https://ax.dev/)
+There is a custom `README.md` in the folder [Section-13-Ax/](./Section-13-Ax/), along with a custom file of requirements.
 
