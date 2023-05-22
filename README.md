@@ -1,27 +1,15 @@
-﻿![PythonVersion](https://img.shields.io/badge/python-3.6%20|3.7%20|%203.8%20|%203.9-success)
+﻿# Hyperparameter tuning for Machine Learning
+
+![PythonVersion](https://img.shields.io/badge/python-3.6%20|3.7%20|%203.8%20|%203.9-success)
 [![License https://github.com/solegalli/hyperparameter-optimization/blob/master/LICENSE](https://img.shields.io/badge/license-BSD-success.svg)](https://github.com/solegalli/hyperparameter-optimization/blob/master/LICENSE)
-[![Sponsorship https://www.trainindata.com/](https://img.shields.io/badge/Powered%20By-TrainInData-orange.svg)](https://www.trainindata.com/)
+[![Sponsorship https://www.trainindata.com/](https://img.shields.io/badge/Powered%20By-TrainInData-orange.svg)](https://www.trainindata.com/), modified by [Mikel Sagardia](https://mikelsagardia.io/)
 
-## Hyperparameter tuning for Machine Learning - Code Repository
-
-Published May, 2021
+Originally published by [Soledad Galli @ Train in Data](https://www.trainindata.com/) in May, 2021.
 
 [<img src="./logo.png" width="248">](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
 
-## Links
-
-- [Online Course](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
-- [Github repository](https://github.com/trainindata/hyperparameter-optimization)
-- [Slides](https://www.dropbox.com/sh/wzbn528sxwdc22k/AAD7IJej-9NwcD5bHK8bbMDka?dl=0)
-- [Datasets: MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data): rename the `train.csv` file to be `mnist.csv`.
-
-## Setup
-
-```bash
-conda create --name hyp pip python=3.8
-conda activate hyp
-python -m pip install -r requirements.txt
-```
+Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the associated Udemy course [Hyperparameter Optimization for Machine Learning
+](https://www.udemy.com/course/hyperparameter-optimization-for-machine-learning).
 
 ## Overview of Topics
 
@@ -63,24 +51,41 @@ python -m pip install -r requirements.txt
 
 ## Table of Contents
 
-- [Hyperparameter tuning for Machine Learning - Code Repository](#hyperparameter-tuning-for-machine-learning---code-repository)
-- [Links](#links)
-- [Setup](#setup)
-- [Overview of Topics](#overview-of-topics)
-- [Table of Contents](#table-of-contents)
-- [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
-- [Section 3: Performance Metrics](#section-3-performance-metrics)
-- [Section 4](#section-4)
-- [Section 5](#section-5)
-- [Section 6](#section-6)
-- [Section 7](#section-7)
-- [Section 8](#section-8)
-- [Section 9](#section-9)
-- [Section 10](#section-10)
-- [Section 11](#section-11)
-- [Section 12](#section-12)
-- [Section 13: Ax Platform](#section-13-ax-platform)
+- [Hyperparameter tuning for Machine Learning](#hyperparameter-tuning-for-machine-learning)
+	- [Overview of Topics](#overview-of-topics)
+	- [Table of Contents](#table-of-contents)
+	- [Setup](#setup)
+	- [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
+		- [Notebooks and Code](#notebooks-and-code)
+	- [Section 3: Performance Metrics](#section-3-performance-metrics)
+		- [Notebooks and Code](#notebooks-and-code-1)
+	- [Section 4](#section-4)
+	- [Section 5](#section-5)
+	- [Section 6](#section-6)
+	- [Section 7](#section-7)
+	- [Section 8](#section-8)
+	- [Section 9](#section-9)
+	- [Section 10](#section-10)
+	- [Section 11](#section-11)
+	- [Section 12](#section-12)
+	- [Section 13: Ax Platform](#section-13-ax-platform)
 
+## Setup
+
+Links:
+
+- [Online Course](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
+- [Github repository](https://github.com/trainindata/hyperparameter-optimization)
+- [Slides](https://www.dropbox.com/sh/wzbn528sxwdc22k/AAD7IJej-9NwcD5bHK8bbMDka?dl=0)
+- [Datasets: MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data): rename the `train.csv` file to be `mnist.csv`.
+
+Environment:
+
+```bash
+conda create --name hyp pip python=3.8
+conda activate hyp
+python -m pip install -r requirements.txt
+```
 ## Section 2: Hyperparameter Tuning: Overview
 
 Hyperparameters are those parameters which are not learnt during taining, but chosen by the user. They can be used to:
@@ -122,6 +127,8 @@ Two important concepts that come up often when talking about hyperparameters opt
 - **Hyperparameter response surface**: that's the value of the decision metric as function of the hyperparameter values; we want to minimize it. Notation: `lambda = argmin(Phi(lambda))`, i.e., `lambda` are the hyperparameter values and `Phi(lambda)` is the response surface, i.e., the decision metric.
 - **Low effective dimension**: the repsonse surface is very sensitive to some hyperparameters and it doesn't change with others; we want to find which hyperparameters affect `Phi`.
 
+### Notebooks and Code
+
 We can evaluate these two concepts, e.g., when we use the `GridSearchCV` from Scikit-Learn. These notebooks show how to do that:
 
 - [`02-01-Response-Surface.ipynb`](./Section-02-Hyperparamter-Overview/02-01-Response-Surface.ipynb)
@@ -129,9 +136,80 @@ We can evaluate these two concepts, e.g., when we use the `GridSearchCV` from Sc
 
 ## Section 3: Performance Metrics
 
+Classification metrics:
 
+- Dependent on probability:
+  - Accuracy: correct / total
+    - Confusion matrix
+  - Precision: Positive Predictive Value
+  - Recall = Sensitivity: True positive rate
+  - F1
+  - False Positive Rate
+  - False Negative Rate
+- Independent from probability, aggregate values
+  - ROC: Receiver-Operator Characteristic Curve
+    - ROC-AUC: ROC area under the curve
+- Loss: `-(y*log(p) + (1-y)*log(1-p))`
 
+Regression metrics:
 
+- Square Error
+- Mean Square Error, MSE
+- Root Mean Square Error, RMSE
+- Mean Absolute Error, MAE
+- **R2: how much of the total variance that exists in our date is explained by the model**
+
+### Notebooks and Code
+
+We want to minimize some metrics and maximize others. In Scikit-Learn, the metrics are always *maximized*; therefore, we use `neg_mae`, i.e., the `-MAE` is maximized:
+
+[Scikit-Learn metrics](https://scikit-learn.org/stable/modules/model_evaluation.html)
+
+If we want to use a metric which is not defined, i.e., a custom metric defined by us:
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
+
+def fnr(y_true, y_pred):
+    """False negative rate.
+	This is essential for cases like cancer detection,
+	in which a false negative has really bad consequences."""
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0,1]).ravel()  
+    FNR = fn / (tp + fn)
+    
+    return FNR
+
+fnr_score = make_scorer(
+    fnr,
+    greater_is_better=False, # smaller is better
+    needs_proba=False,
+)
+
+rf = RandomForestClassifier(n_estimators=100,
+							max_depth=1,
+							random_state=0,
+							n_jobs=4)
+
+# hyperparameter space
+params = dict(
+    n_estimators=[10, 50, 200],
+    max_depth=[1, 2, 3],
+)
+
+# search
+# we can use our custom/defined score/metric
+clf = GridSearchCV(rf,
+                   params,
+                   scoring=fnr_score,
+                   cv=5)
+
+search = clf.fit(X, y)
+
+# best hyperparameters
+search.best_params_
+```
 
 ## Section 4
 
