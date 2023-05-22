@@ -8,5 +8,6 @@
 # models
 *.h5
 
-# folders
-
+# folders, links
+slides
+eda_fe_summary

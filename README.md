@@ -11,10 +11,19 @@ Published May, 2021
 ## Links
 
 - [Online Course](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
+- [Github repository](https://github.com/trainindata/hyperparameter-optimization)
+- [Slides](https://www.dropbox.com/sh/wzbn528sxwdc22k/AAD7IJej-9NwcD5bHK8bbMDka?dl=0)
+- [Datasets: MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data): rename the `train.csv` file to be `mnist.csv`.
 
+## Setup
 
-## Table of Contents
+```bash
+conda create --name hyp pip python=3.9
+conda activate hyp
+python -m pip install -r requirements.txt
+```
 
+## Overview of Topics
 
 1. **Cross-Validation**
 	1. K-fold, LOOCV, LPOCV, Stratified CV
@@ -50,3 +59,73 @@ Published May, 2021
 	5. Keras Tuner
 	6. SMAC
 	7. Others
+	8. **Added by me: Ax**
+
+## Table of Contents
+
+- [Hyperparameter tuning for Machine Learning - Code Repository](#hyperparameter-tuning-for-machine-learning---code-repository)
+- [Links](#links)
+- [Setup](#setup)
+- [Overview of Topics](#overview-of-topics)
+- [Table of Contents](#table-of-contents)
+- [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
+- [Section 3](#section-3)
+- [Section 4](#section-4)
+- [Section 5](#section-5)
+- [Section 6](#section-6)
+- [Section 7](#section-7)
+- [Section 8](#section-8)
+- [Section 9](#section-9)
+- [Section 10](#section-10)
+- [Section 11](#section-11)
+- [Section 12](#section-12)
+- [Section 13: Ax Platform](#section-13-ax-platform)
+
+## Section 2: Hyperparameter Tuning: Overview
+
+## Section 3
+
+
+
+## Section 4
+
+
+
+## Section 5
+
+
+
+## Section 6
+
+
+
+## Section 7
+
+
+
+## Section 8
+
+
+
+## Section 9
+
+
+
+## Section 10
+
+
+
+## Section 11
+
+
+
+## Section 12
+
+
+
+## Section 13: Ax Platform
+
+This section was added by me.
+
+[Adaptive Experimentation Platform](https://ax.dev/)
+
