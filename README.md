@@ -59,7 +59,7 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [Notebooks and Code](#notebooks-and-code)
 	- [Section 3: Performance Metrics](#section-3-performance-metrics)
 		- [Notebooks and Code](#notebooks-and-code-1)
-	- [Section 4](#section-4)
+	- [Section 4: Cross-Validation](#section-4-cross-validation)
 	- [Section 5](#section-5)
 	- [Section 6](#section-6)
 	- [Section 7](#section-7)
@@ -134,6 +134,95 @@ We can evaluate these two concepts, e.g., when we use the `GridSearchCV` from Sc
 - [`02-01-Response-Surface.ipynb`](./Section-02-Hyperparamter-Overview/02-01-Response-Surface.ipynb)
 - [`02-02-Low-Effective-Dimension.ipynb`](./Section-02-Hyperparamter-Overview/02-02-Low-Effective-Dimension.ipynb)
 
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split, GridSearchCV
+
+# model
+rf_model = RandomForestRegressor(
+    n_estimators=100, max_depth=1, random_state=0, n_jobs=4)
+
+# hyperparameter space
+rf_param_grid = dict(
+    n_estimators=[50, 100, 200]
+    max_depth=[2, 3, 4],
+)
+
+# search
+# the available metrics can be passed as a string
+# https://scikit-learn.org/stable/modules/model_evaluation.html#the-scoring-parameter-defining-model-evaluation-rules
+reg = GridSearchCV(rf_model,
+				   rf_param_grid,
+                   scoring='neg_mean_squared_error',
+				   cv=3)
+search = reg.fit(X, y)
+
+# best hyperparameters
+search.best_params_
+
+# We have all the CV results for each parameter combination
+# in this attribute!
+search.cv_results_
+# mean_fit_time
+# std_fit_time
+# mean_score_time
+# std_score_time
+# params
+# param_max_depth
+# param_n_estimators
+# split0_test_score
+# split1_test_score
+# split2_test_score
+# mean_test_score
+# std_test_score
+# rank_test_score
+
+# Get the CV results
+results = pd.DataFrame(search.cv_results_)[['params', 'mean_test_score']]
+
+## 1. Plot response surface
+fig = plt.figure(figsize=(8, 8))
+ax = plt.axes(projection='3d')
+
+# depth
+x = [r['max_depth'] for r in results['params']]
+# number of trees
+y = [r['n_estimators'] for r in results['params']]
+# performance
+z = results['mean_test_score']
+
+# plotting
+ax.scatter(x, y, z,)
+ax.set_title('Response Surface')
+ax.set_xlabel('Tree depth')
+ax.set_ylabel('Number of trees')
+ax.set_zlabel('negative rmse')
+plt.show()
+
+## 2. Plot effect
+results = pd.DataFrame(search.cv_results_)[['params', 'mean_test_score', 'std_test_score']]
+results.index = rf_param_grid['n_estimators']
+
+results['mean_test_score'].plot(yerr=[results['std_test_score'], results['std_test_score']], subplots=True)
+
+plt.ylim(0.2, 0.6)
+plt.ylabel('Mean r2 score')
+plt.xlabel('Number of trees')
+
+# We can also plot the peformance in the hyperparameter space
+results.sort_values(by='mean_test_score', ascending=False, inplace=True)
+results.reset_index(drop=True, inplace=True)
+
+results['mean_test_score'].plot(yerr=[results['std_test_score'], results['std_test_score']], subplots=True)
+
+plt.ylim(-0.3, 0)
+plt.ylabel('Mean False Negative Rate')
+plt.xlabel('Hyperparameter space')
+```
+
 ## Section 3: Performance Metrics
 
 Classification metrics:
@@ -165,17 +254,20 @@ We want to minimize some metrics and maximize others. In Scikit-Learn, the metri
 
 [Scikit-Learn metrics](https://scikit-learn.org/stable/modules/model_evaluation.html)
 
-If we want to use a metric which is not defined, i.e., a custom metric defined by us:
+If we want to use a metric which is not defined, i.e., a custom metric defined by us, we can define it with `make_scorer`. That makes a lot of sense in some cases because there is not an available meric or because we have very specific needs. For instance, in cancer prediction, we want to minimize the false negatives, so we need the *False Negative Rate*; additionally, we might want to set the probability threshold manually! Choosing the correct metric completely changes both the *response surface* and the *effect of the hyperparameters*!
 
 ```python
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, confusion_matrix
 
 def fnr(y_true, y_pred):
     """False negative rate.
 	This is essential for cases like cancer detection,
 	in which a false negative has really bad consequences."""
+	# I we need it, we can pass a probability and define our own threshold:
+	# 	y_pred = np.where(y_pred > 0.37, 1, 0)
+	# BUT we need to set needs_proba=True in make_scorer
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0,1]).ravel()  
     FNR = fn / (tp + fn)
     
@@ -184,7 +276,7 @@ def fnr(y_true, y_pred):
 fnr_score = make_scorer(
     fnr,
     greater_is_better=False, # smaller is better
-    needs_proba=False,
+    needs_proba=False, # specify y_pred needs to be a probability
 )
 
 rf = RandomForestClassifier(n_estimators=100,
@@ -211,7 +303,7 @@ search = clf.fit(X, y)
 search.best_params_
 ```
 
-## Section 4
+## Section 4: Cross-Validation
 
 
 
