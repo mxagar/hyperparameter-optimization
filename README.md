@@ -73,6 +73,12 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 			- [Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
 			- [Random Search with Hyperopt](#random-search-with-hyperopt)
 	- [Section 6: Bayesian Optimization](#section-6-bayesian-optimization)
+		- [Bayesian Inference](#bayesian-inference)
+		- [Bayes Rule](#bayes-rule)
+		- [Sequential Model-Based Optimization (SMBO)](#sequential-model-based-optimization-smbo)
+		- [Literature](#literature)
+		- [Example: Gaussian Optimization of a Black Box 1D Function](#example-gaussian-optimization-of-a-black-box-1d-function)
+		- [Other Sequential Model-Based Optimization (SMBO) Methods](#other-sequential-model-based-optimization-smbo-methods)
 	- [Section 7](#section-7)
 	- [Section 8](#section-8)
 	- [Section 9](#section-9)
@@ -1009,8 +1015,120 @@ print('Test accuracy: ', accuracy_score(y_test, X_test_preds))
 
 ## Section 6: Bayesian Optimization
 
+Recall that we have a **response surface** `Phi()` which depends on the **hyperparameters** `lambda`; that response surface is the metric we want to optimize. We don't have a closed form of the response surface function, instead it's a black box.
 
+Black box optimization can be performed with `GridSearchCV` and `RandomSearchCV` when we have simple models, i.e., when the cost of evaluating `Phi` is low; we can do it even **in parallel**. If we are training neural networks, that's not the case: it's not possible to train many combinations of hyperparameters.
 
+For neural networks, **sequential searches** are better suited: we try a set and then we compute which values we'd need to change to try again. That needs to be carried out in sequence, and the cost of computing the new values needs to be lower than evaluating the model. **Bayesian optimization** is one of the sequential search methods used for black box optimization; it makes sense using it when the black box objective function (the model) is costly to evaluate.
+
+To use Bayesian optimization, the optimized objective function `f` must be:
+
+- f is continuous
+- f is difficult to evaluate; too much time or money
+- f lacks known structure, like concavity or linearity; f is black-box
+- f has no derivative; we can’t evaluate a gradient
+- f can be evaluated at arbitrary points of x (the hyperparameters)
+
+In Bayesian optimization, we follow these steps:
+
+1. In Bayesian optimization we treat f as a random function and place a prior over it. The prior is a function that captures the belief (distribution, behaviour) of f. To estimate the prior, we can use
+   - Gaussian processes
+   - Tree-parzen estimator
+   - Random Forests
+2. Then, we evaluate f at certain points: we evaluate the model with some hyperparameter combinations.
+3. With the new data, the prior (f original belief) is updated to a new the posterior distribution.
+4. The posterior distribution is used to construct an acquisition function to determine the next query point (i.e., which new hyperparameters to use next in step 2). The acquisition function can be
+   - Expected Improvement (EI)
+   - Gaussian process upper confidence bound (UCB)
+
+### Bayesian Inference
+
+In Bayesian inference, we have:
+
+- A prior *unconditonal* belief which is a distribution pointing the probability of some variables.
+- A posterior *conditional* belief, which is the updated prior belief after we have gathered more information. The posterior belief is also a distirbution of the probabilities of some variables.
+
+The step to go from the prior to the posterior is done with the Bayes rule; the posterior becomes the new prior in the next iteration.
+
+### Bayes Rule
+
+Example: we have a table with dog breeds and number of dogs which have dysplasia of a given degree.
+
+![Dog Breed Counts](./assets/dog_probabilities_1.jpg)
+
+We can compute the frequencies dividing by the total number of dogs:
+
+![Dog Breed Frequencies](./assets/dog_probabilities_2.jpg)
+
+Definitions of probabilities:
+
+- Marginal probability: `P(A), P(B)`: probability of a variable: `P(Breed = Labrador) = 0.5`, `P(Dysplasia = Mild) = 0.467`.
+- Joint probability: `P(A,B)`: any cell in the table, i.e., the probability that the variables take a given value: `P(Breed = Labrador, Dysplasia = Mild) = 0.35`.
+  - It is symmetric: `P(A,B) = P(B,A)`.
+  - The marginal probability is the sum of joint probabilities: `P(A) = sum(P(A,B), for all B categories)`.
+- **Conditional probability**: `P(A|B)`: we fix the value of a variable and compute the probabilities of the categories of the other variable, e.g., we **know** a dog is a Labrador, which is the probability of it having a mild dysplasia? `P(Dysplasia = Mild | Breed = Labrador)`.
+  - Computation: `P(A|B) = P(A,B) / P(B)`, `P(Dysplasia = Mild | Breed = Labrador) = P(Dysplasia = Mild, Breed = Labrador) / P(Breed = Labrador) = 0.35 / 0.5 = 0.7`
+  - It is not symmetric! `P(A|B) != P(B|A)`
+
+From the above, the Bayes rule is derived:
+
+`P(A|B) = P(B|A) * P(A) / P(B)`
+
+The nice thing of the Bayes rule is that we can use it to obtain a better estimate (`P(A|B)`) of a prior belief (`P(A)`) given some evidence (`P(B)`).
+
+![Bayes Rule](./assets/bayes.jpg)
+
+### Sequential Model-Based Optimization (SMBO)
+
+The basic idea of Bayesian optimization for hyperparameter tuning is the following:
+
+- `P(A) -> A: f(x)`, i.e., the objective function, the model performance.
+  - `x`: the vector with the hyperparameters.
+- `P(B) -> B: Data`, the available data
+- `P(Data)`: the denominator can be dropped, since it only scales.
+- We don't take the real `f(x)`, but take a *surrogate* function `f(x)` which is a multivariate Gaussian distribution, called Gaussian Process; this surrogate function is like an approximation or best estimate of our objective function. In the beginning, this function provides a constant mean value with a wide spread, no matter the vector value for `x`. The idea is to refine that surrogate `f` by evaluating the real model and to find the optimum of the surrogate, which will capture the optimum of the real `f(x)`.
+- We evaluate our model with some values of `x = x_0`; at these point, the value of `f(x = x_0)` becomes known, the spread decreases around it.
+- The goal is to find the minimum of that surrogate `f`.
+- We define an **acquisition function**, which has high values in areeas which `f` might have a minimum (more on this later).
+- Following the acquisition function, we pick the next `x_1` and evaluate the model there, obtaining a better estimate of the surrogate function.
+- The new surrogate function updates the acquisition function, which leads to a new point.
+- At the end, we converge to a minimum of the surrogate `f`, which approximates our model!
+
+![Hyperparameter Optimization with Bayes](./assets/gaussian_process_1.jpg)
+
+![Hyperparameter Optimization with Bayes](./assets/gaussian_process_2.jpg)
+
+In order to model the spread or uncertainty of the Gaussian Process or surrogate `f(x)`, we use the covariance matrix of the hyperparameters `x`. That covariance matrix is composed by **kernels**: functions that depend on a distance norm between two `x` variables. The most common kernels are:
+
+- Exponential: `k(x_i, x_j) = alpha * exp(-((x_i - x_j)^2)/2*s^2)`
+- Martérn: a function of Gamma and Bessel functions.
+
+There are several choices for acquisition functions:
+
+- Probability of Improvement (PI): Probability that the new sampled value is bigger than the highest observed value. It is computed by the cummulative probability of an `f(x)` distribution above the maximum seen value.
+- Expected Improvement (EI): better that the previous.
+- Upper (or Lower) confidence bound (UCB or LCB): we add of substract the spread to the mean of `f(x)` to compute the lower/upper estimates of `f(x)`.
+
+Also, note that there is a trade-off decision inherent to the acquisition function, which depends on the *exploration* vs. *exploitation* strategy which is taken; we might want to refine a probably minimum of the function, but with that we don't explore unkown regions with high uncertainty.
+
+![Acquisition Functions](./assets/acquisition_functions.jpg)
+
+### Literature
+
+- [Lecture by Nando de Freitas: Machine learning - Introduction to Gaussian processes](https://www.youtube.com/watch?app=desktop&v=4vGiHC35j9s&list=PLE6Wd9FR--EdyJ5lbFl8UuGjecvVw66F6&index=8)
+- [A Tutorial on Bayesian Optimization of Expensive Cost Functions](https://arxiv.org/pdf/1012.2599.pdf)
+- [Taking the Human Out of the Loop: A Review of Bayesian Optimization](http://www.cs.ox.ac.uk/people/nando.defreitas/publications/BayesOptLoop.pdf)
+- [A Tutorial on Bayesian Optimization](https://arxiv.org/pdf/1807.02811v1.pdf)
+- [Practical Bayesian Optimization of Machine Learning Algorithms](https://papers.nips.cc/paper/2012/file/05311655a15b75fab86956663e1819cd-Paper.pdf)
+- [Bayesian Optimization Primer](https://static.sigopt.com/b/20a144d208ef255d3b981ce419667ec25d8412e2/static/pdf/SigOpt_Bayesian_Optimization_Primer.pdf)
+
+### Example: Gaussian Optimization of a Black Box 1D Function
+
+In the notebook [`01-Bayesian-Optimization-Demo.ipynb`](./Section-06-Bayesian-Optimization/01-Bayesian-Optimization-Demo.ipynb), the minimum of an unkown 1D function is found using Gaussian processes with scikit-optimize; the function is treated as unknown (i.e., black box, no close form), but we can evaluate it and any point.
+
+The example shows that Bayesian optimization is not only for hyperparameter tuning, but for any optimization of black box functions!
+
+### Other Sequential Model-Based Optimization (SMBO) Methods
 
 ## Section 7
 
