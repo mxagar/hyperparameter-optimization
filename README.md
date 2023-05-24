@@ -8,8 +8,7 @@ Originally published by [Soledad Galli @ Train in Data](https://www.trainindata.
 
 [<img src="./logo.png" width="248">](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
 
-Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the associated Udemy course [Hyperparameter Optimization for Machine Learning
-](https://www.udemy.com/course/hyperparameter-optimization-for-machine-learning).
+Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the associated Udemy course [Hyperparameter Optimization for Machine Learning](https://www.udemy.com/course/hyperparameter-optimization-for-machine-learning).
 
 ## Overview of Topics
 
@@ -78,6 +77,8 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [Sequential Model-Based Optimization (SMBO)](#sequential-model-based-optimization-smbo)
 		- [Literature](#literature)
 		- [Example: Gaussian Optimization of a Black Box 1D Function](#example-gaussian-optimization-of-a-black-box-1d-function)
+		- [Example: Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter](#example-gaussian-optimiation-of-a-grandient-boosted-tree-with-1-hyperparameter)
+		- [Example: Gaussian Optimiation of a Grandient Boosted Tree with 4 Hyperparameters](#example-gaussian-optimiation-of-a-grandient-boosted-tree-with-4-hyperparameters)
 		- [Other Sequential Model-Based Optimization (SMBO) Methods](#other-sequential-model-based-optimization-smbo-methods)
 	- [Section 7](#section-7)
 	- [Section 8](#section-8)
@@ -793,6 +794,14 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
 
+# To avoid an error I get with scikit-optimize
+# I need to run these lines...
+# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
+from numpy.ma import MaskedArray
+import sklearn.utils.fixes
+sklearn.utils.fixes.MaskedArray = MaskedArray
+import skopt
+
 from skopt import dummy_minimize # for the randomized search
 from skopt.plots import plot_convergence
 from skopt.space import Real, Integer, Categorical
@@ -1128,7 +1137,184 @@ In the notebook [`01-Bayesian-Optimization-Demo.ipynb`](./Section-06-Bayesian-Op
 
 The example shows that Bayesian optimization is not only for hyperparameter tuning, but for any optimization of black box functions!
 
+### Example: Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter
+
+Notebook: [`02-Bayesian-Optimization-1-Dimension.ipynb`](./Section-06-Bayesian-Optimization/02-Bayesian-Optimization-1-Dimension.ipynb).
+
+A Gradient Boosted Tree is tuned using Bayes optimization for one hyperparameter (the number of nodes). It doesn't make sense to use Gaussian process optimization (Bayes optimization) for a tree with one hyperparameter, but this notebook is for demo purposes.
+
+Apart from performing the optimization, the Gaussian process modification is plotted in different stages (including the acquisition function values).
+
+Note: I needed to fix a bug in the `skopt` package in the file `gpr.py`; the code was bifurcating depending on the `sklearn` minor version.
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import (
+    cross_val_score,
+    train_test_split,
+    GridSearchCV,
+)
+
+# To avoid an error I get with scikit-optimize
+# I need to run these lines...
+# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
+from numpy.ma import MaskedArray
+import sklearn.utils.fixes
+sklearn.utils.fixes.MaskedArray = MaskedArray
+import skopt
+
+from skopt import gp_minimize
+from skopt.plots import plot_convergence, plot_gaussian_process
+from skopt.space import Integer
+from skopt.utils import use_named_args
+
+# set up the model
+gbm = GradientBoostingClassifier(random_state=0)
+
+# determine the hyperparameter space
+param_grid = {
+    'n_estimators': [10, 20, 50, 100, 120, 150, 200, 250, 300],
+}
+
+# set up the search
+# we perform a grid search to know the shape of the response surface
+# which will be estimated later in the Gaussian process optimization
+search = GridSearchCV(gbm, param_grid, scoring='accuracy', cv=3, refit=False)
+
+# find best hyperparameter
+search.fit(X_train, y_train)
+
+results = pd.DataFrame(search.cv_results_)
+results.sort_values(by='param_n_estimators', ascending=False, inplace=True)
+
+# plot f(x) - 1-D hyperparameter response function
+plt.plot(results['param_n_estimators'], results['mean_test_score'], "ro--")
+plt.ylabel('Accuracy')
+plt.xlabel('Number of trees')
+
+# Now, we perform Bayesian optimization
+# The first step consists in defining the hyperparameter space
+# More info: https://scikit-optimize.github.io/stable/modules/generated/skopt.Space.html
+param_grid = [Integer(10, 300, name="n_estimators")]
+
+# We design a function to maximize the accuracy, of a GBM,
+# with cross-validation
+# the decorator allows our objective function to receive the parameters as
+# keyword arguments. This is a requirement of Scikit-Optimize.
+@use_named_args(param_grid)
+def objective(**params):
+    
+    # model with new parameters
+    gbm.set_params(**params)
+
+    # optimization function (hyperparam response function)
+    value = np.mean(
+        cross_val_score(
+            gbm, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+
+    # negate metric because we need to minimize
+    return -value
+
+
+# gp_minimize performs by default GP Optimization
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html
+gp_ = gp_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    n_initial_points=2, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    n_calls=20, # the number of subsequent evaluations of f(x)
+    random_state=0, 
+)
+
+# function value at the minimum.
+# note that it is the negative of the accuracy
+"Best score=%.4f" % gp_.fun
+print("""Best parameters:
+=========================
+- n_estimators=%d""" % (gp_.x[0]))
+
+# Plot the score during the steps.
+# This shows whether we have converged or not, i.e., whether we finished or not.
+# We can see that the minimum is found very fast
+# almost in the 2nd call
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_convergence.html#skopt.plots.plot_convergence
+plot_convergence(gp_)
+
+# The folloing code snippet shows the different steps
+# of the Gaussian optimization with their values:
+# - in green the surrogate f(x) which is being discovered and minimized
+# - in orange the precomputed response surface f(x) (with grid search)
+# - in red the trials/evaluations, i.e., the observations
+# - in blue the acquisition function EI
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_gaussian_process.html#skopt.plots.plot_gaussian_process
+end = 10
+for n_iter in range(1, end):
+    
+    # figure size
+    plt.figure(figsize=(10,20))
+    
+    # ===================
+    
+    # 2 plots next to each other, left plot
+    plt.subplot(end, 2, 2*n_iter+1)
+
+    # plot gaussian process search
+    ax = plot_gaussian_process(
+        gp_,
+        n_calls=n_iter,
+        show_legend=True,
+        show_title=False,
+        show_next_point=False,
+        show_acq_func=False)
+    
+    # plot true hyperparameter response function
+    ax.scatter(results['param_n_estimators'], -results['mean_test_score'])
+
+    ax.set_ylabel("")
+    ax.set_xlabel("")
+    
+    # ===================
+    
+    # Plot EI(x) - the acquisition function
+    
+    # 2 plots next to each other, right plot
+    plt.subplot(end, 2, 2*n_iter+2)
+    
+    ax = plot_gaussian_process(
+        gp_,
+        n_calls=n_iter,
+        show_legend=True,
+        show_title=False,
+        show_mu=False,
+        show_acq_func=True,
+        show_observations=False,
+        show_next_point=True)
+    
+    ax.set_ylabel("")
+    ax.set_xlabel("")
+
+plt.show()
+```
+
+### Example: Gaussian Optimiation of a Grandient Boosted Tree with 4 Hyperparameters
+
+Notebook: [](./Section-06-Bayesian-Optimization/04-Bayesian-Optimization-GBM-Grid.ipynb)
+
 ### Other Sequential Model-Based Optimization (SMBO) Methods
+
+
 
 ## Section 7
 
