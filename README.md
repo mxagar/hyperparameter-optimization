@@ -70,7 +70,9 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [Grid Search](#grid-search)
 		- [Random Search](#random-search)
 		- [Random Search with Other Packages](#random-search-with-other-packages)
-	- [Section 6](#section-6)
+			- [Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
+			- [Random Search with Hyperopt](#random-search-with-hyperopt)
+	- [Section 6: Bayesian Optimization](#section-6-bayesian-optimization)
 	- [Section 7](#section-7)
 	- [Section 8](#section-8)
 	- [Section 9](#section-9)
@@ -767,10 +769,246 @@ Notebooks where it is shown how:
 - [`05-Randomized-Search-with-Scikit-Optimize.ipynb`](./Section-05-Basic-Search-Algorithms/05-Randomized-Search-with-Scikit-Optimize.ipynb)
 - [`06-Randomized-Search-with-Hyperopt.ipynb`](./Section-05-Basic-Search-Algorithms/06-Randomized-Search-with-Hyperopt.ipynb)
 
+#### Random Search with Scikit-Optimize
+
+Notebook: [`05-Randomized-Search-with-Scikit-Optimize.ipynb`](./Section-05-Basic-Search-Algorithms/05-Randomized-Search-with-Scikit-Optimize.ipynb)
+
+Equivalence to scikit-learn:
+
+- `RandomSearchCV` is `dummy_minimize()`.
+- The hyperparameter space is defined in `param_grid` using specific type objects.
+- We define an `objective()` function which gets the `param_grid` via a decorator; this function needs to manually compute `np.mean(cross_val_score())`.
+
+```python
+import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import cross_val_score, train_test_split
+
+from skopt import dummy_minimize # for the randomized search
+from skopt.plots import plot_convergence
+from skopt.space import Real, Integer, Categorical
+from skopt.utils import use_named_args
 
 
+# determine the hyperparameter space
+param_grid = [
+    Integer(10, 120, name="n_estimators"),
+    Real(0, 0.999, name="min_samples_split"),
+    Integer(1, 5, name="max_depth"),
+    Categorical(['deviance', 'exponential'], name="loss"),
+]
 
-## Section 6
+# set up the gradient boosting classifier
+gbm = GradientBoostingClassifier(random_state=0)
+
+# We design a function to maximize the accuracy, of a GBM,
+# with cross-validation
+# the decorator allows our objective function to receive the parameters as
+# keyword arguments. This is a requirement for scikit-optimize.
+@use_named_args(param_grid)
+def objective(**params):
+    # model with new parameters
+    gbm.set_params(**params)
+    # optimization function (hyperparam response function)
+    value = np.mean(
+        cross_val_score(
+            gbm, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+
+    # negate because we need to minimize
+    return -value
+
+# dummy_minimize performs the randomized search
+search = dummy_minimize(
+    objective,  # the objective function to minimize
+    param_grid,  # the hyperparameter space
+    n_calls=50,  # the number of subsequent evaluations of f(x)
+    random_state=0,
+)
+
+# function value at the minimum.
+# note that it is the negative of the accuracy
+"Best score=%.4f" % search.fun # -0.9673
+
+print("""Best parameters:
+=========================
+- n_estimators=%d
+- min_samples_split=%.6f
+- max_depth=%d
+- loss=%s""" % (search.x[0], 
+                search.x[1],
+                search.x[2],
+                search.x[3]))
+
+plot_convergence(search)
+```
+
+#### Random Search with Hyperopt
+
+Notebook: [`06-Randomized-Search-with-Hyperopt.ipynb`](./Section-05-Basic-Search-Algorithms/06-Randomized-Search-with-Hyperopt.ipynb)
+
+Equivalence to scikit-learn:
+
+- `RandomSearchCV` is `fmin()`; we specify the search algorithm `rand`
+- The hyperparameter space `param_grid` is defined with `hp`.
+- A manually defined `objective()` function needs to be passed to `fmin()`; `cross_val_score()` needs to be used in it.
+
+The hyperparameters are optimized for XGBoost; interesting links:
+
+- [Hyperopt: Defining a Search Space](http://hyperopt.github.io/hyperopt/getting-started/search_spaces/)
+- [xgboost.XGBClassifier](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBClassifier)
+- [XGBoost Parameters](https://xgboost.readthedocs.io/en/latest/parameter.html)
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score, train_test_split
+
+import xgboost as xgb
+
+from hyperopt import hp, rand, fmin, Trials
+
+# hp: define the hyperparameter space
+# rand: random search
+# fmin: optimization function
+# Trials: to evaluate the different searched hyperparameters
+
+# load dataset
+breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
+X = pd.DataFrame(breast_cancer_X)
+y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+# split dataset into a train and test set
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# determine the hyperparameter space
+param_grid = {
+    'n_estimators': hp.quniform('n_estimators', 200, 2500, 100), # min, max, step
+    'max_depth': hp.uniform('max_depth', 1, 10), # min, max
+    'learning_rate': hp.uniform('learning_rate', 0.01, 0.99),
+    'booster': hp.choice('booster', ['gbtree', 'dart']),
+    'gamma': hp.quniform('gamma', 0.01, 10, 0.1),
+    'subsample': hp.uniform('subsample', 0.50, 0.90),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.50, 0.99),
+    'colsample_bylevel': hp.uniform('colsample_bylevel', 0.50, 0.99),
+    'colsample_bynode': hp.uniform('colsample_bynode', 0.50, 0.99),
+    'reg_lambda': hp.uniform('reg_lambda', 1, 20)
+}
+
+# the objective function takes the hyperparameter space
+# as input
+def objective(params):
+    # we need a dictionary to indicate which value from the space
+    # to attribute to each value of the hyperparameter in the xgb
+    # here, we capture one parameter from the distributions
+    params_dict = {
+        'n_estimators': int(params['n_estimators']), # important int, as it takes integers only
+        'max_depth': int(params['max_depth']), # important int, as it takes integers only
+        'learning_rate': params['learning_rate'],
+        'booster': params['booster'],
+        'gamma': params['gamma'],
+        'subsample': params['subsample'],
+        'colsample_bytree': params['colsample_bytree'],
+        'colsample_bylevel': params['colsample_bylevel'],
+        'colsample_bynode': params['colsample_bynode'],
+        'random_state': 1000,
+    }
+
+    # with ** we pass the items in the dictionary as parameters
+    # to the xgb
+    gbm = xgb.XGBClassifier(**params_dict)
+
+    # train with cv
+    score = cross_val_score(gbm, X_train, y_train,
+                            scoring='accuracy', cv=5, n_jobs=4).mean()
+
+    # to minimize, we negate the score
+    return -score
+
+# OPTIONAL: We can use the Trials() object to store more information from the search
+# for later inspection
+trials = Trials()
+
+# fmin performs the minimization
+# rand.suggest samples the parameters at random
+# i.e., performs the random search
+# NOTE: I got the error "AttributeError: 'numpy.random._generator.Generator' object has no attribute 'randint'"
+# So I needed to replace randint() with integers() in fmin.py
+search = fmin(
+    fn=objective,
+    space=param_grid,
+    max_evals=50, # number of combinations we'd like to randomly test
+    rstate=np.random.default_rng(42),
+    algo=rand.suggest,  # randomized search
+	trials=trials
+)
+
+# best hyperparameters
+search
+
+# the best hyperparameters can also be found in
+# trials
+trials.argmin
+
+# All the results, sorted by loss = minimized score
+results = pd.concat([
+    pd.DataFrame(trials.vals),
+    pd.DataFrame(trials.results)],
+    axis=1,
+).sort_values(by='loss', ascending=False).reset_index(drop=True)
+
+# Plot the score as function of the hyperparameter combination
+results['loss'].plot()
+plt.ylabel('Accuracy')
+plt.xlabel('Hyperparam combination')
+
+# Minimum/best score (recall we minimize)
+pd.DataFrame(trials.results)['loss'].min()
+
+# create another dictionary to pass the search items as parameters
+# to a new xgb
+# we basically grab the best hyperparameters here and assure that the types
+# are correct
+best_hp_dict = {
+        'n_estimators': int(search['n_estimators']), # important int, as it takes integers only
+        'max_depth': int(search['max_depth']), # important int, as it takes integers only
+        'learning_rate': search['learning_rate'],
+        'booster': 'gbtree',
+        'gamma': search['gamma'],
+        'subsample': search['subsample'],
+        'colsample_bytree': search['colsample_bytree'],
+        'colsample_bylevel': search['colsample_bylevel'],
+        'colsample_bynode': search['colsample_bynode'],
+        'random_state': 1000,
+}
+
+# after the search we can train the model with the
+# best parameters manually
+gbm_final = xgb.XGBClassifier(**best_hp_dict)
+gbm_final.fit(X_train, y_train)
+
+# Final score on train and test splits
+X_train_preds = gbm_final.predict(X_train)
+X_test_preds = gbm_final.predict(X_test)
+print('Train accuracy: ', accuracy_score(y_train, X_train_preds))
+print('Test accuracy: ', accuracy_score(y_test, X_test_preds))
+```
+
+## Section 6: Bayesian Optimization
+
 
 
 
