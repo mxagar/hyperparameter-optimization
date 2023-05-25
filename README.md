@@ -64,23 +64,29 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [Hyperparameter Tuning with Different Cross-Validation Schemes](#hyperparameter-tuning-with-different-cross-validation-schemes)
 		- [Special Cross-Validation Schemes: Non-Independent Data](#special-cross-validation-schemes-non-independent-data)
 		- [Nested Cross-Validation](#nested-cross-validation)
-	- [Section 5: Basic Search Algorithms](#section-5-basic-search-algorithms)
+	- [Section 5: Basic Search Algorithms: Grid and Random](#section-5-basic-search-algorithms-grid-and-random)
 		- [Manual Search](#manual-search)
 		- [Grid Search](#grid-search)
 		- [Random Search](#random-search)
 		- [Random Search with Other Packages](#random-search-with-other-packages)
 			- [Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
 			- [Random Search with Hyperopt](#random-search-with-hyperopt)
-	- [Section 6: Bayesian Optimization](#section-6-bayesian-optimization)
+	- [Section 6: Bayesian Optimization with Scikit-Optimize](#section-6-bayesian-optimization-with-scikit-optimize)
 		- [Bayesian Inference](#bayesian-inference)
 		- [Bayes Rule](#bayes-rule)
 		- [Sequential Model-Based Optimization (SMBO)](#sequential-model-based-optimization-smbo)
 		- [Literature](#literature)
-		- [Example: Gaussian Optimization of a Black Box 1D Function](#example-gaussian-optimization-of-a-black-box-1d-function)
-		- [Example: Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter](#example-gaussian-optimiation-of-a-grandient-boosted-tree-with-1-hyperparameter)
-		- [Example: Gaussian Optimiation of a Grandient Boosted Tree with 4 Hyperparameters](#example-gaussian-optimiation-of-a-grandient-boosted-tree-with-4-hyperparameters)
-		- [Other Sequential Model-Based Optimization (SMBO) Methods](#other-sequential-model-based-optimization-smbo-methods)
-	- [Section 7](#section-7)
+		- [Scikit-Optimize for Bayesian Optimization: Notes](#scikit-optimize-for-bayesian-optimization-notes)
+		- [Example: Manual Gaussian Optimization of a Black Box 1D Function](#example-manual-gaussian-optimization-of-a-black-box-1d-function)
+		- [Example: Manual Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter](#example-manual-gaussian-optimiation-of-a-grandient-boosted-tree-with-1-hyperparameter)
+		- [Example: Manual Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters](#example-manual-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters)
+		- [Example: Automatic Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters (BayesSearchCV)](#example-automatic-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters-bayessearchcv)
+		- [Example: Bayes Optimization with Different Kernels (Manual)](#example-bayes-optimization-with-different-kernels-manual)
+		- [Example: Manual Bayesian Optimization of an XGBoost Classifier](#example-manual-bayesian-optimization-of-an-xgboost-classifier)
+		- [Example: Manual Bayesian Optimization of a Keras-CNN](#example-manual-bayesian-optimization-of-a-keras-cnn)
+	- [Section 7: Other Sequential Model-Based Optimization (SMBO) Methods](#section-7-other-sequential-model-based-optimization-smbo-methods)
+		- [SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates](#smacs-sequential-model-based-algorithm-configuration-using-tree-based-models-as-surrogates)
+		- [TPE: Tree-Structured Parzen Estimators](#tpe-tree-structured-parzen-estimators)
 	- [Section 8](#section-8)
 	- [Section 9](#section-9)
 	- [Section 10](#section-10)
@@ -107,14 +113,23 @@ python -m pip install -r requirements.txt
 
 ### Datasets
 
-Apart from the [MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data) dataset, the [Breast Cancer Wisconsin (Diagnostic)](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+%28Diagnostic%29) dataset is used.
+Used datasets:
+
+- [MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data): CNN for classification.
+- [Breast Cancer Wisconsin (Diagnostic)](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+%28Diagnostic%29): linear and non-linear models (trees) for classification.
+- Boston housing dataset: regression.
 
 ```python
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_boston
 
 breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
 X = pd.DataFrame(breast_cancer_X)
 y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+boston_X, boston_y = load_boston(return_X_y=True)
+X = pd.DataFrame(boston_X)
+y = pd.Series(boston_y)
 ```
 
 ## Section 2: Hyperparameter Tuning: Overview
@@ -425,7 +440,7 @@ print('mean test set accuracy: ', np.mean(clf['test_score']), ' +- ', np.std(clf
 
 ### Hyperparameter Tuning with Different Cross-Validation Schemes
 
-If we use Scikit-Learn, we need to use `RandomSearchCV` or `GridSearchCV` for hyperparameter tuning wth cross-validation. The code below is very similar to the previous one, but we pass our cross-validation scheme to `GridSearchCV` instead of `cross_validate()`.
+If we use Scikit-Learn, we need to use `RandomSearchCV` or `GridSearchCV` for hyperparameter tuning wth cross-validation. The code below is very similar to the previous one, but we pass our cross-validation scheme to `GridSearchCV` instead of `cross_val_score()`.
 
 ```python
 from sklearn.linear_model import LogisticRegression
@@ -531,7 +546,7 @@ A solution to that consists in performing nested cross-validation: we perform a 
 
 See notebook: [`04-04-Nested-Cross-Validation.ipynb`](./Section-04-Cross-Validation/04-04-Nested-Cross-Validation.ipynb).
 
-## Section 5: Basic Search Algorithms
+## Section 5: Basic Search Algorithms: Grid and Random
 
 Things to consider:
 
@@ -542,7 +557,7 @@ Things to consider:
 
 ### Manual Search
 
-We manually try with `cross_validate()` different hyperparameter values and obtain the `test` errors (mean and standard deviation).
+We manually try with `cross_val_score()` different hyperparameter values and obtain the `test` errors (mean and standard deviation).
 
 The idea is to obtain ranges of values that lead to models that generalize well, i.e., the error/score distirbutions of the `train` and `test/val` splits in the cross validation overlap and the unseen `test` split is contained in them.
 
@@ -794,14 +809,6 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
 
-# To avoid an error I get with scikit-optimize
-# I need to run these lines...
-# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
-from numpy.ma import MaskedArray
-import sklearn.utils.fixes
-sklearn.utils.fixes.MaskedArray = MaskedArray
-import skopt
-
 from skopt import dummy_minimize # for the randomized search
 from skopt.plots import plot_convergence
 from skopt.space import Real, Integer, Categorical
@@ -841,6 +848,9 @@ def objective(**params):
     # negate because we need to minimize
     return -value
 
+# Now, we could call objective() with a list of params
+# to test it
+
 # dummy_minimize performs the randomized search
 search = dummy_minimize(
     objective,  # the objective function to minimize
@@ -864,6 +874,18 @@ print("""Best parameters:
                 search.x[3]))
 
 plot_convergence(search)
+```
+
+Note:
+
+```python
+# To avoid an error I get with scikit-optimize
+# I need to run these lines...
+# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
+from numpy.ma import MaskedArray
+import sklearn.utils.fixes
+sklearn.utils.fixes.MaskedArray = MaskedArray
+import skopt
 ```
 
 #### Random Search with Hyperopt
@@ -953,6 +975,9 @@ def objective(params):
     # to minimize, we negate the score
     return -score
 
+# Now, we could call objective() with a list of params
+# to test it
+
 # OPTIONAL: We can use the Trials() object to store more information from the search
 # for later inspection
 trials = Trials()
@@ -1022,7 +1047,7 @@ print('Train accuracy: ', accuracy_score(y_train, X_train_preds))
 print('Test accuracy: ', accuracy_score(y_test, X_test_preds))
 ```
 
-## Section 6: Bayesian Optimization
+## Section 6: Bayesian Optimization with Scikit-Optimize
 
 Recall that we have a **response surface** `Phi()` which depends on the **hyperparameters** `lambda`; that response surface is the metric we want to optimize. We don't have a closed form of the response surface function, instead it's a black box.
 
@@ -1095,9 +1120,9 @@ The basic idea of Bayesian optimization for hyperparameter tuning is the followi
   - `x`: the vector with the hyperparameters.
 - `P(B) -> B: Data`, the available data
 - `P(Data)`: the denominator can be dropped, since it only scales.
-- We don't take the real `f(x)`, but take a *surrogate* function `f(x)` which is a multivariate Gaussian distribution, called Gaussian Process; this surrogate function is like an approximation or best estimate of our objective function. In the beginning, this function provides a constant mean value with a wide spread, no matter the vector value for `x`. The idea is to refine that surrogate `f` by evaluating the real model and to find the optimum of the surrogate, which will capture the optimum of the real `f(x)`.
+- We don't take the real `f(x)`, but take a *surrogate* function `f(x)` which is a multivariate Gaussian distribution, called Gaussian Process; this surrogate function is like an approximation or best estimate of our objective function. For each point `x` (the vector of hyperparamters), we have an estimated mean of `f` and a covariance matrix of `x` which captures the uncertainty as a spread. In the beginning, the surrogate Gaussian Process provides a constant mean value with a wide spread, no matter the vector value for `x`. The idea is to refine that surrogate `f` by evaluating the real model and to find the optimum of the surrogate, which will capture the optimum of the real `f(x)`.
 - We evaluate our model with some values of `x = x_0`; at these point, the value of `f(x = x_0)` becomes known, the spread decreases around it.
-- The goal is to find the minimum of that surrogate `f`.
+- The goal is to find the minimum of that surrogate `f`. In essence the problem is a regression problem (hence, we need a Gaussian Process regressor), but instead of discovering the shape of `f`, we are interested in discovering only its optimum.
 - We define an **acquisition function**, which has high values in areeas which `f` might have a minimum (more on this later).
 - Following the acquisition function, we pick the next `x_1` and evaluate the model there, obtaining a better estimate of the surrogate function.
 - The new surrogate function updates the acquisition function, which leads to a new point.
@@ -1109,8 +1134,8 @@ The basic idea of Bayesian optimization for hyperparameter tuning is the followi
 
 In order to model the spread or uncertainty of the Gaussian Process or surrogate `f(x)`, we use the covariance matrix of the hyperparameters `x`. That covariance matrix is composed by **kernels**: functions that depend on a distance norm between two `x` variables. The most common kernels are:
 
-- Exponential: `k(x_i, x_j) = alpha * exp(-((x_i - x_j)^2)/2*s^2)`
-- Martérn: a function of Gamma and Bessel functions.
+- Exponential or Radial Basis Function (RBF): `k(x_i, x_j) = alpha * exp(-((x_i - x_j)^2)/2*s^2)`
+- Martérn: a function of Gamma and Bessel functions; used by default by `gp_minimize` from Scikit-Optimize.
 
 There are several choices for acquisition functions:
 
@@ -1131,13 +1156,42 @@ Also, note that there is a trade-off decision inherent to the acquisition functi
 - [Practical Bayesian Optimization of Machine Learning Algorithms](https://papers.nips.cc/paper/2012/file/05311655a15b75fab86956663e1819cd-Paper.pdf)
 - [Bayesian Optimization Primer](https://static.sigopt.com/b/20a144d208ef255d3b981ce419667ec25d8412e2/static/pdf/SigOpt_Bayesian_Optimization_Primer.pdf)
 
-### Example: Gaussian Optimization of a Black Box 1D Function
+### Scikit-Optimize for Bayesian Optimization: Notes
+
+The rest of this section focuses on [Scikit-Optimize](https://scikit-optimize.github.io/stable/), aka. `skopt`, for Bayesian optimization of tree-based models and neural networks.
+
+There are two main APIs for Bayesian optimization in `skopt`:
+
+- The **manual** API, in which we define the `objective()` function which performs the model training given a set of hyperparameters. Here, we can use any model and any cross-validation scheme. For instance, we can use scikit-learn models with `cross_val_score()`. The `objective()` function is passed to `gp_minimize()`, which performs the Bayesian optimization. We can also change the kernels and tune the `GaussianProcessRegressor`. The manual API is more complex, but provides a lot of flexibility, so that we can optimize any model of any ML framework with it!
+- The **automatic** API, which mimicks the Scikit-Learn objects: we instantiate `BayesSearchCV` and pass to it the hyperparameter space and a `sklearn`-conform estimator; then, everything is done automatically, as it were a `GridSearchCV` object.
+
+Notes:
+
+- Bayesian optimization is not only for hyperparameter tuning; we can use it with any function which is hard to evaluate and of which we don't have a closed-form formula.
+- Bayesian optimization is costly; it makes sense when the model we're training is costly to train and evaluate, e.g., a complex XGBoost model or neural networks. Otherwise, `GridSearchCV`, or better `RandomSearchCV` with distirbutions and [60 calls](https://stats.stackexchange.com/questions/561164/the-amazing-hidden-power-of-random-search) should be used.
+- Scikit-optimize is very sensitive to the Scikit-Learn and Scipy versions used; additionally, it seems there are no new versions of Scikit-Optimize in the past 2 years. Sometimes some examples from the course yield errors, probably due to version conflicts. Used versions: 
+	```
+	numpy==1.22.0
+	scipy==1.5.3
+	scikit-learn==0.23.2
+	scikit-optimize==0.8.1
+	```
+- Always plot the convergence with `plot_convergence()`. We can see how many iterations are really necessary; even though we might use `n_calls=50` often times, sometimes `30` calls is more than enough.
+- To analyze the optimization process (i.e., response as function of hyperparameters and hyperparameter values in time), use, respectively: `plot_objective()` and `plot_evaluations()`.
+ 
+The most important notebooks/sub-sections:
+
+- [`04-Bayesian-Optimization-GBM-Grid.ipynb`](./Section-06-Bayesian-Optimization/04-Bayesian-Optimization-GBM-Grid.ipynb): Automatic Bayesian optimization of a `sklearn` GBT using `BayesSearchCV`.
+- [`06-Bayesian-Optimization-xgb-Optional.ipynb`](./Section-06-Bayesian-Optimization/06-Bayesian-Optimization-xgb-Optional.ipynb): Manual Bayesian optimization of an XGBoost classifier.
+- [`07-Bayesian-Optimization-CNN.ipynb`](./Section-06-Bayesian-Optimization/07-Bayesian-Optimization-CNN.ipynb): Manual Bayesian optimization of a TF/Keras-CNN.
+
+### Example: Manual Gaussian Optimization of a Black Box 1D Function
 
 In the notebook [`01-Bayesian-Optimization-Demo.ipynb`](./Section-06-Bayesian-Optimization/01-Bayesian-Optimization-Demo.ipynb), the minimum of an unkown 1D function is found using Gaussian processes with scikit-optimize; the function is treated as unknown (i.e., black box, no close form), but we can evaluate it and any point.
 
 The example shows that Bayesian optimization is not only for hyperparameter tuning, but for any optimization of black box functions!
 
-### Example: Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter
+### Example: Manual Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter
 
 Notebook: [`02-Bayesian-Optimization-1-Dimension.ipynb`](./Section-06-Bayesian-Optimization/02-Bayesian-Optimization-1-Dimension.ipynb).
 
@@ -1159,14 +1213,6 @@ from sklearn.model_selection import (
     train_test_split,
     GridSearchCV,
 )
-
-# To avoid an error I get with scikit-optimize
-# I need to run these lines...
-# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
-from numpy.ma import MaskedArray
-import sklearn.utils.fixes
-sklearn.utils.fixes.MaskedArray = MaskedArray
-import skopt
 
 from skopt import gp_minimize
 from skopt.plots import plot_convergence, plot_gaussian_process
@@ -1226,6 +1272,8 @@ def objective(**params):
     # negate metric because we need to minimize
     return -value
 
+# Now, we could call objective() with a list of params
+# to test it
 
 # gp_minimize performs by default GP Optimization
 # https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html
@@ -1237,6 +1285,9 @@ gp_ = gp_minimize(
     n_calls=20, # the number of subsequent evaluations of f(x)
     random_state=0, 
 )
+
+# we can access the hyperparameter space
+gp_.space
 
 # function value at the minimum.
 # note that it is the negative of the accuracy
@@ -1308,15 +1359,861 @@ for n_iter in range(1, end):
 plt.show()
 ```
 
-### Example: Gaussian Optimiation of a Grandient Boosted Tree with 4 Hyperparameters
+Note:
 
-Notebook: [](./Section-06-Bayesian-Optimization/04-Bayesian-Optimization-GBM-Grid.ipynb)
+```python
+# To avoid an error I get with scikit-optimize
+# I need to run these lines...
+# https://stackoverflow.com/questions/63479109/error-when-running-any-bayessearchcv-function-for-randomforest-classifier
+from numpy.ma import MaskedArray
+import sklearn.utils.fixes
+sklearn.utils.fixes.MaskedArray = MaskedArray
+import skopt
+```
 
-### Other Sequential Model-Based Optimization (SMBO) Methods
+### Example: Manual Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters
+
+Notebook: [`04-Bayesian-Optimization-GBM-Manual.ipynb`](./Section-06-Bayesian-Optimization/03-Bayesian-Optimization-GBM-Manual.ipynb).
+
+This notebook is very similar to the previous one, but we optimize 4 hyperparameters in a gradient boosted tree.
+
+**Unfortunately, I get an error when running the code**. I have tried to install different versions of scikit-learn ans scikit-optimize, but the error persists.
+
+**However**, the error is not that important, because 
+
+- in the next subsection/notebook, `BayesSearchCV` is introduced, which works and resembles the `GridSearchCV` API from Scikit-Learn;
+- in the subsection after that, a change of kernel is performed and this manual approach works;
+- in the subsection after that an XGBoost model (equivalent to the GBM) is optimized manually without problems.
+
+```python
+from skopt.space import Real, Integer, Categorical
+
+# The only difference in the code is the definition
+# of the hyperparameter space
+param_grid = [
+    Integer(10, 120, name="n_estimators"),
+    Real(0.0001, 0.999, name="min_samples_split"),
+    Integer(1, 5, name="max_depth"),
+    Categorical(['log_loss', 'exponential'], name="loss"),
+]
+```
+
+### Example: Automatic Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters (BayesSearchCV)
+
+Notebook: [`04-Bayesian-Optimization-GBM-Grid.ipynb`](./Section-06-Bayesian-Optimization/04-Bayesian-Optimization-GBM-Grid.ipynb).
+
+This notebook is very similar to the previous one: we optimize 4 hyperparameters in a gradient boosted tree, but using `BayesSearchCV`, which resembles the `GridSearchCV` API from Scikit-Learn.
+
+**Important note**: I think this is the easiest way of performing hyperparameter optimization using Bayes for models from Scikit-Learn.
+
+Also, note that I didn't get an error when running this notebook.
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+from sklearn.datasets import load_boston
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+
+# note that we only need to import the wrapper
+from skopt import BayesSearchCV
+
+# load dataset
+boston_X, boston_y = load_boston(return_X_y=True)
+X = pd.DataFrame(boston_X)
+y = pd.Series(boston_y)
+
+# split dataset into a train and test set
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# set up the model
+gbm = GradientBoostingRegressor(random_state=0)
+
+# hyperparameter space
+# now, it is a dictionary (not a list as in the manual case),
+# beause BayesSearchCV tries to mimick scikit-learn
+param_grid = {
+    'n_estimators': (10, 120), # min, max
+    'min_samples_split': (0.001, 0.99, 'log-uniform'), # min, max, sample uniformly in log scale
+    'max_depth': (1, 8), # min, max
+    'loss': ['ls', 'lad', 'huber'], # list of classes
+}
+
+# set up the search
+search = BayesSearchCV(
+    estimator=gbm,
+    search_spaces=param_grid,
+    scoring='neg_mean_squared_error', # same as in scikit-learn
+    cv=3,
+    n_iter=50,
+    random_state=10,
+    n_jobs=4, # number of processors
+    refit=True)
+
+# find best hyperparameters
+search.fit(X_train, y_train)
+
+# the best hyperparameters are stored in an attribute
+search.best_params_
+
+# the best hyperparameters are stored in an attribute
+search.best_params_
+# OrderedDict([('loss', 'huber'),
+#              ('max_depth', 3),
+#              ('min_samples_split', 0.001),
+#              ('n_estimators', 101)])
+
+# the best score
+search.best_score_ # -11.292655185099154
+
+# we also find the data for all models evaluated
+results = pd.DataFrame(search.cv_results_)
+
+# we can order the different models based on their performance
+results.sort_values(by='mean_test_score', ascending=False, inplace=True)
+results.reset_index(drop=True, inplace=True)
+
+# plot model performance and error
+results['mean_test_score'].plot(yerr=[results['std_test_score'], results['std_test_score']], subplots=True)
+plt.ylabel('Mean test score')
+plt.xlabel('Hyperparameter combinations')
+
+# Generalization error
+X_train_preds = search.predict(X_train)
+X_test_preds = search.predict(X_test)
+print('Train MSE: ', mean_squared_error(y_train, X_train_preds))
+print('Test MSE: ', mean_squared_error(y_test, X_test_preds))
+```
+
+### Example: Bayes Optimization with Different Kernels (Manual)
+
+Notebook: [`05-Bayesian-Optimization-Change-Kernel.ipynb`](./Section-06-Bayesian-Optimization/05-Bayesian-Optimization-Change-Kernel.ipynb)
+
+By default, the kernel used by the Gaussian Process regressor is Martérn. However, we can change it to be, e.g., the RBF (exponential) kernel.
+
+In that case, we need to use the manual API, in which we define an `objective` function with a decorator; additionally, we need to define a new `GaussianProcessRegressor` which is passed to `gp_minimize()`.
+
+Apart from that, the code is very similar.
+
+Links:
+
+- [Kernels for Gaussian Processes](https://scikit-learn.org/stable/modules/gaussian_process.html#kernels-for-gaussian-processes)
+- [Gaussian Process Regressor](https://scikit-optimize.github.io/stable/modules/generated/skopt.learning.GaussianProcessRegressor.html)
+- [Test different kernels](https://scikit-optimize.github.io/stable/auto_examples/optimizer-with-different-base-estimator.html#test-different-kernels)
+
+```python
+import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import cross_val_score, train_test_split
+
+# squared exponential kernel
+from sklearn.gaussian_process.kernels import RBF
+
+from skopt import gp_minimize
+from skopt.plots import plot_convergence
+from skopt.space import Real, Integer, Categorical
+from skopt.utils import use_named_args
+
+# Gaussian Process Regressor, we will change the kernel here:
+from skopt.learning import GaussianProcessRegressor
+
+# load dataset
+breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
+X = pd.DataFrame(breast_cancer_X)
+y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+# split dataset into a train and test set
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# determine the hyperparameter space
+param_grid = [
+    Integer(10, 120, name="n_estimators"),
+    Real(0, 0.999, name="min_samples_split"),
+    Integer(1, 5, name="max_depth"),
+    Categorical(['deviance', 'exponential'], name="loss"),
+]
+
+# set up the gradient boosting classifier
+gbm = GradientBoostingClassifier(random_state=0)
+
+# define the kernel: RBF (exponential)
+# https://scikit-learn.org/stable/modules/generated/sklearn.gaussian_process.kernels.RBF.html#sklearn.gaussian_process.kernels.RBF
+kernel = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-1, 10.0))
+
+# Set up manually the GaussianProcessRegressor
+# with the kernel
+gpr = GaussianProcessRegressor(
+    kernel=kernel,
+    normalize_y=True, noise="gaussian",
+    n_restarts_optimizer=2
+)
+
+# We design a function to maximize the accuracy, of a GBM,
+# with cross-validation
+# the decorator allows our objective function to receive the parameters as
+# keyword arguments. This is a requirement of Scikit-Optimize.
+@use_named_args(param_grid)
+def objective(**params):
+    
+    # model with new parameters
+    gbm.set_params(**params)
+
+    # optimization function (hyperparam response function)
+    value = np.mean(
+        cross_val_score(
+            gbm, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+
+    # negate because we need to minimize
+    return -value
+
+# Now, we could call objective() with a list of params
+# to test it
+
+# Bayesian optimization
+gp_ = gp_minimize(
+    objective,
+    dimensions=param_grid,
+    base_estimator=gpr,
+    n_initial_points=5,
+    acq_optimizer="sampling",
+    random_state=42,
+)
+
+# we can access the hyperparameter space
+gp_.space
+
+# function value at the minimum.
+# note that it is the negative of the accuracy
+"Best score=%.4f" % gp_.fun
+# 'Best score=-0.9724'
+
+print("""Best parameters:
+=========================
+- n_estimators=%d
+- min_samples_split=%.6f
+- max_depth=%d
+- loss=%s""" % (gp_.x[0], 
+                gp_.x[1],
+                gp_.x[2],
+                gp_.x[3]))
+# Best parameters:
+# =========================
+# - n_estimators=119
+# - min_samples_split=0.764091
+# - max_depth=4
+# - loss=exponential
+
+# Convergence plot
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_convergence.html#skopt.plots.plot_convergence
+plot_convergence(gp_)
+
+```
+
+### Example: Manual Bayesian Optimization of an XGBoost Classifier
+
+Notebook: [`06-Bayesian-Optimization-xgb-Optional.ipynb`](./Section-06-Bayesian-Optimization/06-Bayesian-Optimization-xgb-Optional.ipynb).
+
+In this notebook, instead of optimizing the hyperparameters of a Gradient Boosted Tree from Scikit-Learn, an equivalent XGBoost model is tuned. In contrast to the GBT, this time the optimization takes place without any errors.
+
+This notebook, together with the `BayesSearchCV` and the next Keras-CNN notebook is the summary of practical usage of Bayesian optimization with Scikit-Optimize.
+
+```python
+import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import cross_val_score, train_test_split
+
+import xgboost as xgb
+
+from skopt import gp_minimize
+from skopt.plots import plot_convergence
+from skopt.space import Real, Integer, Categorical
+from skopt.utils import use_named_args
+
+# load dataset
+breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
+X = pd.DataFrame(breast_cancer_X)
+y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+# split dataset into a train and test set
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# determine the hyperparameter space
+param_grid = [
+    Integer(200, 2500, name='n_estimators'),
+    Integer(1, 10, name='max_depth'),
+    Real(0.01, 0.99, name='learning_rate'),
+    Categorical(['gbtree', 'dart'], name='booster'),
+    Real(0.01, 10, name='gamma'),
+    Real(0.50, 0.90, name='subsample'),
+    Real(0.50, 0.90, name='colsample_bytree'),
+    Real(0.50, 0.90, name='colsample_bylevel'),
+    Real(0.50, 0.90, name='colsample_bynode'),
+    Integer(1, 50, name='reg_lambda'),
+]
+
+# set up the gradient boosting classifier
+gbm = xgb.XGBClassifier(random_state=1000)
+
+# We design a function to maximize the accuracy, of a GBM,
+# with cross-validation
+# the decorator allows our objective function to receive the parameters as
+# keyword arguments. This is a requirement of Scikit-Optimize.
+@use_named_args(param_grid)
+def objective(**params):
+    
+    # model with new parameters
+    gbm.set_params(**params)
+
+    # optimization function (hyperparam response function)
+    value = np.mean(
+        cross_val_score(
+            gbm, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+
+    # negate because we need to minimize
+    return -value
+
+# Before we run the hyper-parameter optimization, 
+# let's first check that the everything is working
+# by passing some default hyper-parameters.
+default_parameters = [200,
+                      3,
+                      0.1,
+                      'gbtree',
+                      0.1,
+                      0.6,
+                      0.6,
+                      0.6,
+                      0.6,
+                      10]
+
+objective(x=default_parameters)
+# -0.9598048150679729
+
+# gp_minimize performs by default GP Optimization 
+# using a Marten Kernel
+# NOTE: in the case of neural networks, instead of passing
+# n_initial_points, it is common to pass the default/initial hyperparams
+# in the argument x0
+gp_ = gp_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    n_initial_points=10, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    n_calls=50, # the number of subsequent evaluations of f(x)
+    random_state=0, 
+)
+
+# we can access the hyperparameter space
+gp_.space
+
+# function value at the minimum.
+# note that it is the negative of the accuracy
+"Best score=%.4f" % gp_.fun
+
+print("""Best parameters:
+=========================
+- n_estimators = %d
+- max_depth = %d
+- learning_rate = %.6f
+- booster = %s
+- gamma = %.6f
+= subsample = %.6f
+- colsample_bytree = %.6f
+- colsample_bylevel = %.6f
+- colsample_bynode' = %.6f
+""" % (gp_.x[0],
+       gp_.x[1],
+       gp_.x[2],
+       gp_.x[3],
+       gp_.x[4],
+       gp_.x[5],
+       gp_.x[6],
+       gp_.x[7],
+       gp_.x[8],
+      ))
+
+# Plot convergence
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_convergence.html#skopt.plots.plot_convergence
+plot_convergence(gp_)
+```
+
+### Example: Manual Bayesian Optimization of a Keras-CNN
+
+Notebook: [`07-Bayesian-Optimization-CNN.ipynb`](./Section-06-Bayesian-Optimization/07-Bayesian-Optimization-CNN.ipynb).
+
+Very interesting notebook, in which Bayesian optimization is applied to a CNN model defined with Tensorflow/Keras. The dataset with which it is trained is [MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data).
+
+New analysis plots are introduced:
+
+- `plot_objective()`: it shows the response as function of different hyperparameter values.
+- `plot_evaluations()`: it shows the selection of hyperparameter values along the different calls.
+
+```python
+# For reproducible results.
+# See: 
+# https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
+
+import os
+os.environ['PYTHONHASHSEED'] = '0'
+
+import numpy as np
+import tensorflow as tf
+import random as python_random
+
+# The below is necessary for starting Numpy generated random numbers
+# in a well-defined initial state.
+np.random.seed(123)
+
+# The below is necessary for starting core Python generated random numbers
+# in a well-defined state.
+python_random.seed(123)
+
+# The below set_seed() will make random number generation
+# in the TensorFlow backend have a well-defined initial state.
+# For further details, see:
+# https://www.tensorflow.org/api_docs/python/tf/random/set_seed
+tf.random.set_seed(1234)
+
+import itertools
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+from keras.utils.np_utils import to_categorical
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Flatten, Conv2D, MaxPool2D
+from keras.optimizers import Adam
+from keras.callbacks import ReduceLROnPlateau
+
+from skopt import gp_minimize
+from skopt.space import Real, Categorical, Integer
+from skopt.plots import plot_convergence
+from skopt.plots import plot_objective, plot_evaluations
+from skopt.utils import use_named_args
+
+# Load the data
+
+data = pd.read_csv("../data/train.csv")
+# first column is the target, the rest of the columns
+# are the pixels of the image
+# each row is 1 image
+
+# split dataset into a train and test set
+
+X_train, X_test, y_train, y_test = train_test_split(
+    data.drop(['label'], axis=1), # the images
+    data['label'], # the target
+    test_size = 0.1,
+    random_state=0)
+
+X_train.shape, X_test.shape
+# ((37800, 784), (4200, 784))
+
+# Re-scale the data
+# 255 is the maximum value a pixel can take
+X_train = X_train / 255
+X_test = X_test / 255
+
+# Reshape image in 3 dimensions:
+# height: 28px X width: 28px X channel: 1 
+X_train = X_train.values.reshape(-1,28,28,1)
+X_test = X_test.values.reshape(-1,28,28,1)
+
+# the target is 1 variable with the 9 different digits
+# as values
+y_train.unique()
+# 2, 0, 7, 4, 3, 5, 9, 6, 8, 1
+
+# For Keras, we need to create 10 dummy variables,
+# one for each digit
+# Encode labels to one hot vectors (ex : digit 2 -> [0,0,1,0,0,0,0,0,0,0])
+y_train = to_categorical(y_train, num_classes = 10)
+y_test = to_categorical(y_test, num_classes = 10)
+
+# Some image examples 
+g = plt.imshow(X_train[0][:,:,0])
+
+# function to create the CNN
+# we pass the hyperparameters we want to optimize
+# and the function returns the model (compiled with the optimizer)
+# inside the function the model is defined
+def create_cnn(
+    learning_rate,
+    num_dense_layers,
+    num_dense_nodes,
+    activation,
+):
+    """
+    Hyper-parameters:
+    learning_rate:     Learning-rate for the optimizer.
+    num_dense_layers:  Number of dense layers.
+    num_dense_nodes:   Number of nodes in each dense layer.
+    activation:        Activation function for all layers.
+    """
+
+    # Start construction of a Keras Sequential model.
+    model = Sequential()
+
+    # First convolutional layer.
+    # There are many hyper-parameters in this layer
+    # For this demo, we will optimize the activation function only.
+    model.add(Conv2D(kernel_size=5, strides=1, filters=16, padding='same',
+                     activation=activation, name='layer_conv1'))
+    model.add(MaxPool2D(pool_size=2, strides=2))
+
+    # Second convolutional layer.
+    # Again, we will only optimize the activation function.
+    model.add(Conv2D(kernel_size=5, strides=1, filters=36, padding='same',
+                     activation=activation, name='layer_conv2'))
+    model.add(MaxPool2D(pool_size=2, strides=2))
+
+    # Flatten the 4-rank output of the convolutional layers
+    # to 2-rank that can be input to a fully-connected Dense layer.
+    model.add(Flatten())
+
+    # Add fully-connected Dense layers.
+    # The number of layers is a hyper-parameter we want to optimize.
+    # We add the different number of layers in the following loop:
+    
+    for i in range(num_dense_layers):
+        
+        # Add the dense fully-connected layer to the model.
+        # This has two hyper-parameters we want to optimize:
+        # The number of nodes (neurons) and the activation function.
+        model.add(Dense(num_dense_nodes,
+                        activation=activation,
+                        ))
+
+    # Last fully-connected dense layer with softmax-activation
+    # for use in classification.
+    model.add(Dense(10, activation='softmax'))
+
+    # Use the Adam method for training the network.
+    # We want to find the best learning-rate for the Adam method.
+    optimizer = Adam(learning_rate=learning_rate)
+
+    # In Keras we need to compile the model so it can be trained.
+    model.compile(optimizer=optimizer,
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    return model
+
+# We define the hyperparameter space
+dim_learning_rate = Real(
+    low=1e-6,
+    high=1e-2,
+    prior='log-uniform', # sample it from teh log-uniform distribution
+    name='learning_rate',
+)
+
+# uniformly sampled by default
+dim_num_dense_layers = Integer(low=1,
+                               high=5,
+                               name='num_dense_layers')
+
+dim_num_dense_nodes = Integer(low=5, high=512, name='num_dense_nodes')
 
 
+dim_activation = Categorical(
+    categories=['relu', 'sigmoid'], name='activation',
+)
 
-## Section 7
+# the hyperparameter space grid
+param_grid = [dim_learning_rate,
+              dim_num_dense_layers,
+              dim_num_dense_nodes,
+              dim_activation]
+# NOTE: other possible hyperparameters: batch size, epochs, number of convolutional layers in each conv-pool block, etc.
+
+# we will save the model with this name
+path_best_model = 'cnn_model.h5'
+
+# starting point for the optimization
+best_accuracy = 0
+
+# The objective function in the case of a neural network does the following:
+# - Instantiate a model with a set of hyperparameters: create_cnn()
+# - Instantiate anything required by the model, e.g., learning rate reduction scheme
+# - Fit/train it for some epoches and a given fraction of validation split
+# - If the score is the best so far, save the model and its training statistics
+@use_named_args(param_grid)
+def objective(
+    learning_rate,
+    num_dense_layers,
+    num_dense_nodes,
+    activation,
+):
+    
+    """
+    Hyper-parameters:
+    learning_rate:     Learning-rate for the optimizer.
+    num_dense_layers:  Number of dense layers.
+    num_dense_nodes:   Number of nodes in each dense layer.
+    activation:        Activation function for all layers.
+    """
+
+    # Print the hyper-parameters.
+    print('learning rate: {0:.1e}'.format(learning_rate))
+    print('num_dense_layers:', num_dense_layers)
+    print('num_dense_nodes:', num_dense_nodes)
+    print('activation:', activation)
+    print()
+    
+    # Create the neural network with the hyper-parameters.
+    # We call the function we created previously.
+    model = create_cnn(learning_rate=learning_rate,
+                       num_dense_layers=num_dense_layers,
+                       num_dense_nodes=num_dense_nodes,
+                       activation=activation)
+
+   
+    # Set a learning rate annealer
+    # this reduces the learning rate if learning does not improve
+    # for a certain number of epochs
+    learning_rate_reduction = ReduceLROnPlateau(monitor='val_accuracy', 
+                                                patience=2, 
+                                                verbose=1, 
+                                                factor=0.5, 
+                                                min_lr=0.00001)
+   
+    # train the model
+    # we use 3 epochs to be able to run the notebook in a "reasonable"
+    # time. If we increase the epochs, we will have better performance
+    # this could be another parameter to optimize in fact.
+    history = model.fit(x=X_train,
+                        y=y_train,
+                        epochs=3, # 3
+                        batch_size=128, # this could be a hyperparameter, too
+                        validation_split=0.1,
+                        callbacks=learning_rate_reduction)
+
+    # Get the classification accuracy on the validation-set
+    # after the last training-epoch.
+    accuracy = history.history['val_accuracy'][-1]
+
+    # Print the classification accuracy.
+    print()
+    print("Accuracy: {0:.2%}".format(accuracy))
+    print()
+
+    # Save the model if it improves on the best-found performance.
+    # We use the global keyword so we update the variable outside
+    # of this function.
+    global best_accuracy
+
+    # If the classification accuracy of the saved model is improved ...
+    if accuracy > best_accuracy:
+        # Save the new model to harddisk.
+        # Training CNNs is costly, so we want to avoid having to re-train
+        # the network with the best found parameters. We save it instead
+        # as we search for the best hyperparam space.
+        model.save(path_best_model)
+        
+        # Update the classification accuracy.
+        best_accuracy = accuracy
+
+    # VERY IMPORTANT!
+    # Delete the Keras model with these hyper-parameters from memory.
+    del model
+    
+    # Remember that Scikit-optimize always minimizes the objective
+    # function, so we need to negate the accuracy (because we want
+    # the maximum accuracy)
+    return -accuracy
+
+# Before we run the hyper-parameter optimization, 
+# let's first check that the everything is working
+# by passing some default hyper-parameters.
+# Beware of the time needed for one evaluation and
+# modify epochs and n_calls accordingly
+default_parameters = [1e-5, 1, 16, 'relu']
+objective(x=default_parameters)
+
+# gp_minimize performs by default GP Optimization 
+# using a Marten Kernel
+# NOTE: instead of passing n_initial_points, we pass
+# th einitial parameters!
+gp_ = gp_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    x0=default_parameters, # the initial parameters to test
+    acq_func='EI', # the acquisition function
+    n_calls=30, # the number of subsequent evaluations of f(x)
+    random_state=0, 
+)
+
+# function value at the minimum.
+# note that it is the negative of the accuracy
+"Best score=%.4f" % gp_.fun
+# 'Best score=-0.9849'
+
+# we can access the hyperparameter space
+gp_.space
+
+print("""Best parameters:
+=========================
+- learning rate=%.6f
+- num_dense_layers=%d
+- num_nodes=%d
+- activation = %s""" % (gp_.x[0], 
+                gp_.x[1],
+                gp_.x[2],
+                gp_.x[3]))
+# Best parameters:
+# =========================
+# - learning rate=0.005901
+# - num_dense_layers=1
+# - num_nodes=512
+# - activation = relu
+
+# Always plot the convergence to check whether we founf the minimum
+plot_convergence(gp_)
+
+# Objective plot:
+# We select the hyperparameters we want to analyze
+# A matrix of plots is shown
+# The diagonal shows the effect of each selected hyperparam on the response
+# The non-diagonal plots are bi-variate plots of pairs of hyperparams
+# and they also show the effect of varying hyperparam values on the response.
+# In black, the sampled combinations, in red, the optimum combination (minimum response in objective)
+# We see that sometimes some hyperparams have no effect, e.g., number of dense layers
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_objective.html#skopt.plots.plot_objective
+dim_names = ['learning_rate', 'num_dense_nodes', 'num_dense_layers']
+plot_objective(result=gp_, plot_dims=dim_names)
+plt.show()
+
+# Evaluations plot
+# We select the hyperparameters we want to analyze
+# A matrix of plots is shown
+# The diagonal shows the histogram of samplings for each selected hyperparam
+# The non-diagonal plots show the order of the sampling with pairs of hyperparams
+# The order in which hyperparams were sampled is color-coded
+# The optimum point is in red
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.plots.plot_evaluations.html
+plot_evaluations(result=gp_, plot_dims=dim_names)
+plt.show()
+
+# Model Evaluation
+# We need to evaluate the final/best model with the test set
+# For that, we load the best model
+model = load_model(path_best_model)
+# make predictions in test set
+# NOTE: there is actually another dataset we could use...
+# but we use the split we created.
+result = model.evaluate(x=X_test,
+                        y=y_test)
+
+# print evaluation metrics
+for name, value in zip(model.metrics_names, result):
+    print(name, value)
+# loss 0.049428313970565796
+# accuracy 0.9840475916862488
+
+# Predict the values from the validation dataset
+y_pred = model.predict(X_test)
+
+# Convert predictions classes to one hot vectors 
+y_pred_classes = np.argmax(y_pred, axis = 1)
+
+# Convert validation observations to one hot vectors
+y_true = np.argmax(y_test, axis = 1)
+
+# compute the confusion matrix
+cm = confusion_matrix(y_true, y_pred_classes) 
+cm
+
+# Confusion matrix: let's make it more colourful
+classes = 10
+
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Confusion matrix')
+plt.colorbar()
+tick_marks = np.arange(classes)
+plt.xticks(tick_marks, range(classes), rotation=45)
+plt.yticks(tick_marks, range(classes))
+
+for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(j, i, cm[i, j],
+             horizontalalignment="center",
+             color="white" if cm[i, j] > 100 else "black",
+            )
+
+plt.tight_layout()
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
+
+```
+
+## Section 7: Other Sequential Model-Based Optimization (SMBO) Methods
+
+Bayesian optimization is one type of Sequential Model-Based Optimization (SMBO) method to optimize black-box functions. It can be used any time the `f(x)` function to optimize is very difficult/costly to evaluate, and we don't know its shape (formula) nor its derivative.
+
+In particular, when we apply Bayesian optimization, Gaussian Processes are regressed as a surrogate of the real `f(x)` with observations and used to estimate the minimum/maximum point. The regression is done sequentially and the `x` values to be used at each step are given by the acquisition functions.
+
+However, there are other SMBO methods different to the introduced Bayesian optimization. These alternative methods, follow a similar approach as the Bayesian optimization, but the surrogate function and its regression are different. Methods introduced in this section:
+
+- SMACs: Instead of Gaussian Processes, we can use Random Forests and Gradient Boosted Models (GBM) as the surrogate function.
+- TPE: Tree-structured Parzen estimators: Non-standard Bayesian optimization.
+
+### SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates
+
+In SMACs, instead of regressing a Gaussian Process surrogate, we regress a random forest of a gradient boosted model. Similarly, our surrogate is able to predict the values of `f` as mean and spread: if the tree is trained, for a given `x`, we navigate in the nodes to the corresponding leave node and take the mean and the standard deviation in that node. Thus, with a mean and a spread, we can apply the acquisition functions introduced so far; whereby, some other modified versions are also used.
+
+Notebook: [`01-SMAC-Scikit-Optimize-CNN.ipynb`](./Section-07-Other-SMBO-Models/01-SMAC-Scikit-Optimize-CNN.ipynb). We optimine a Keras-CNN to classify MNIST hand-written digits.
+
+The notebook is very similar to the previous one [`07-Bayesian-Optimization-CNN.ipynb`](./Section-06-Bayesian-Optimization/07-Bayesian-Optimization-CNN.ipynb), but `forest_minimize()` is used to optimize the `objective()` instead of the `gp_minimize()`:
+
+- [`forest_minimize`](https://scikit-optimize.github.io/stable/modules/generated/skopt.forest_minimize.html#skopt.forest_minimize)
+- [`gbrt_minimize`](https://scikit-optimize.github.io/stable/modules/generated/skopt.gbrt_minimize.html#skopt.gbrt_minimize)
+
+
+```python
+# we approximate f(x) using Random Forests, we could
+# also approximate it with gradient boosting machines
+# using gbrt_minimize instead.
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.forest_minimize.html#skopt.forest_minimize
+# https://scikit-optimize.github.io/stable/modules/generated/skopt.gbrt_minimize.html#skopt.gbrt_minimize
+# The call here is identical to the call with gp_minimize
+fm_ = forest_minimize(
+    objective,  # the objective function to minimize
+    param_grid,  # the hyperparameter space
+    x0=default_parameters,  # the initial parameters to test
+    acq_func='EI',  # the acquisition function
+    n_calls=30,  # the number of subsequent evaluations of f(x)
+    random_state=0,
+)
+```
+
+### TPE: Tree-Structured Parzen Estimators
 
 
 
