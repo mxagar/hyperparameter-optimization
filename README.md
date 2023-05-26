@@ -89,10 +89,12 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [TPE: Tree-Structured Parzen Estimators with Hyperopt](#tpe-tree-structured-parzen-estimators-with-hyperopt)
 		- [Comparison of the Algorithms: Which one Should We Use?](#comparison-of-the-algorithms-which-one-should-we-use)
 	- [Section 8: Multi-Fidelity Optimization](#section-8-multi-fidelity-optimization)
-	- [Section 9](#section-9)
-	- [Section 10](#section-10)
-	- [Section 11](#section-11)
-	- [Section 12](#section-12)
+	- [Section 9: Empty](#section-9-empty)
+	- [Section 10: Scikit-Optimize Review and Summary](#section-10-scikit-optimize-review-and-summary)
+		- [Overview of the API](#overview-of-the-api)
+		- [Example Notebooks](#example-notebooks)
+	- [Section 11: Hyperopt Review and Summary](#section-11-hyperopt-review-and-summary)
+	- [Section 12: Optuna Review](#section-12-optuna-review)
 	- [Section 13: Ax Platform](#section-13-ax-platform)
 
 ## Setup
@@ -817,6 +819,7 @@ from skopt.utils import use_named_args
 
 
 # determine the hyperparameter space
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 param_grid = [
     Integer(10, 120, name="n_estimators"),
     Real(0, 0.999, name="min_samples_split"),
@@ -1177,7 +1180,8 @@ Notes:
 	scikit-learn==0.23.2
 	scikit-optimize==0.8.1
 	```
-- Always plot the convergence with `plot_convergence()`. We can see how many iterations are really necessary; even though we might use `n_calls=50` often times, sometimes `30` calls is more than enough.
+- Maybe an important remark is that Scikit-Optimize is currently not updated/maintained regularly; the last release to date (2023-05) is v0.9 in 2021-10.
+- Always plot the convergence with `plot_convergence()`. We can see how many iterations are really necessary, and whether we reached the optimum; even though we might use `n_calls=50` often times, sometimes `30` calls is more than enough.
 - To analyze the optimization process (i.e., response as function of hyperparameters and hyperparameter values in time), use, respectively: `plot_objective()` and `plot_evaluations()`.
  
 The most important notebooks/sub-sections:
@@ -1247,6 +1251,7 @@ plt.xlabel('Number of trees')
 # Now, we perform Bayesian optimization
 # The first step consists in defining the hyperparameter space
 # More info: https://scikit-optimize.github.io/stable/modules/generated/skopt.Space.html
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 param_grid = [Integer(10, 300, name="n_estimators")]
 
 # We design a function to maximize the accuracy, of a GBM,
@@ -1391,6 +1396,7 @@ from skopt.space import Real, Integer, Categorical
 
 # The only difference in the code is the definition
 # of the hyperparameter space
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 param_grid = [
     Integer(10, 120, name="n_estimators"),
     Real(0.0001, 0.999, name="min_samples_split"),
@@ -1536,6 +1542,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=0)
 
 # determine the hyperparameter space
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 param_grid = [
     Integer(10, 120, name="n_estimators"),
     Real(0, 0.999, name="min_samples_split"),
@@ -1657,6 +1664,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=0)
 
 # determine the hyperparameter space
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 param_grid = [
     Integer(200, 2500, name='n_estimators'),
     Integer(1, 10, name='max_depth'),
@@ -1929,6 +1937,7 @@ def create_cnn(
     return model
 
 # We define the hyperparameter space
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
 dim_learning_rate = Real(
     low=1e-6,
     high=1e-2,
@@ -2607,19 +2616,312 @@ A cheap `f(x)` evaluation/representation can be achieved with:
 
 One implementation of a multi-fidelity method is in Scikit-Learn: [Successive Halving](https://scikit-learn.org/stable/auto_examples/model_selection/plot_successive_halving_iterations.html): `HalvingGridSearchCV`, `HalvingRandomSearchCV`.
 
-## Section 9
+## Section 9: Empty
+
+This section is empty. I leave it here so that the notebook folder names coincide with the sections in this guide. It was probably a bug.
+
+## Section 10: Scikit-Optimize Review and Summary
+
+This section is a review/summary of the [Scikit-Optimize](https://scikit-optimize.github.io/stable/) library. All the theoretical concepts were already introduced, as well as almost all `skopt` APIs. 
+
+There are two main APIs for Bayesian optimization in `skopt`:
+
+- The **manual** API, in which we define the `objective()` function which performs the model training given a set of hyperparameters. Here, we can use any model and any cross-validation scheme. For instance, we can use scikit-learn models with `cross_val_score()`. The `objective()` function is passed to a search algorithm, e.g., `gp_minimize()`. The manual API is more complex, but provides a lot of flexibility, so that we can optimize any model of any ML framework with it!
+- The **automatic** API for Bayesian optimization, which mimicks the Scikit-Learn objects: we instantiate `BayesSearchCV` and pass to it the hyperparameter space and a `sklearn`-conform estimator; then, everything is done automatically, as it were a `GridSearchCV` object.
+
+Notes:
+
+- Scikit-optimize is very sensitive to the Scikit-Learn and Scipy versions used; additionally, it seems there are no new versions of Scikit-Optimize in the past 2 years. Sometimes some examples from the course yield errors, probably due to version conflicts. Used versions: 
+	```
+	numpy==1.22.0
+	scipy==1.5.3
+	scikit-learn==0.23.2
+	scikit-optimize==0.8.1
+	```
+- Maybe an important remark is that Scikit-Optimize is currently not updated/maintained regularly; the last release to date (2023-05) is v0.9 in 2021-10.
+- Always plot the convergence with `plot_convergence()`. We can see how many iterations are really necessary; even though we might use `n_calls=50` often times, sometimes `30` calls is more than enough.
+- To analyze the optimization process (i.e., response as function of hyperparameters and hyperparameter values in time), use, respectively: `plot_objective()` and `plot_evaluations()`.
+
+For a more detailed information, check these sections, with their respective notebooks:
+
+- [Section 5 - Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
+- [Section 6 - Scikit-Optimize for Bayesian Optimization: Notes](#scikit-optimize-for-bayesian-optimization-notes)
+- [Section 6 - Example: Automatic Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters (BayesSearchCV)](#example-automatic-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters-bayessearchcv)
+- [Section 6 - Example: Manual Bayesian Optimization of an XGBoost Classifier](#example-manual-bayesian-optimization-of-an-xgboost-classifier)
+- [Section 6 - Example: Manual Bayesian Optimization of a Keras-CNN](#example-manual-bayesian-optimization-of-a-keras-cnn)
+- [Section 7 - SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates](#smacs-sequential-model-based-algorithm-configuration-using-tree-based-models-as-surrogates)
+
+### Overview of the API
+
+**Hyperparameter space** definition is done in a list which takes distributions with built-in objects:
+
+- Samples Reals, Integers and Categories
+- For Reals and Integers samples with uniform and log-uniform
+
+```python
+# In the manual API, the hyperparameter space is a list
+# In the automatic/sklearn API the hyperparameter space is a dictionary
+# min, max, prior: distribution "uniform" (default) or "log-uniform", name
+param_grid = [
+    Integer(10, 120, name="n_estimators"), # prior is "uniform" by default
+    Integer(1, 5, name="max_depth"),
+    Real(0.0001, 0.1, prior='log-uniform', name='learning_rate'),
+    Real(0.001, 0.999, prior='log-uniform', name="min_samples_split"),
+    Categorical(['deviance', 'exponential'], name="loss"),
+]
+
+# to sample a parameter value, i.e., draw a random value from its distribution
+param_grid.rvs()[0]
+```
+
+A typical **objective function** looks like this:
+
+```python
+# instantiate model
+model = GradientBoostingClassifier(random_state=0)
+
+# we pass the hyperparameter space via a decorator
+@use_named_args(param_grid)
+def objective(**params):
+    model.set_params(**params)
+    value = np.mean(
+		# cross-validation from sklearn
+        cross_val_score(
+            model, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+    # negate because we need to minimize
+    return -value
+```
+
+Available **search algorithms** that take the `objective` and the hyperparameter space:
+
+- `gp_minimize`: Bayesian optimization with Gaussian Process Regression.
+- `forest_minimize`: SMAC: Bayesian optimization with Random Forests.
+- `gbrt_minimize`: Bayesian Optimization with Gradient Boosted Trees.
+- `dummy_minimize`: Random search.
+
+```python
+# Bayesian optimization with Gaussian Process Regression
+gp_ = gp_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    n_initial_points=10, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    n_calls=30, # the number of subsequent evaluations of f(x)
+    random_state=0,
+)
+
+# SMAC: Bayesian optimization with Random Forests
+fm_ = forest_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    base_estimator = 'RF', # the surrogate
+    n_initial_points=10, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    n_calls=30, # the number of subsequent evaluations of f(x)
+    random_state=0, 
+    n_jobs=4,
+)
+
+# Bayesian Optimization with Gradient Boosted Trees
+gbm_ = gbrt_minimize(
+    objective, # the objective function to minimize
+    param_grid, # the hyperparameter space
+    n_initial_points=10, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    n_calls=30, # the number of subsequent evaluations of f(x)
+    random_state=0, 
+    n_jobs=4,
+)
+
+# Random search
+search = dummy_minimize(
+    objective,  # the objective function to minimize
+    param_grid,  # the hyperparameter space
+    n_calls=50,  # the number of evaluations of the objective function
+    random_state=0,
+)
+```
+
+Built-in **acquisition functions** passed to the search/optimization function via `acq_func`:
+
+- Expected Improvement (EI): `"EI"`
+- Probability of Improvement (PI): `"PI"`
+- Lower Confidence Bound (LCB): `"LCB"`
+- EI and PI per second, to account for compute time: `"EIps"`, `"PIps"` 
+- Hedge optimization of all acquisition functions: `"gp_hedge"`
+
+**Results and analysis of the optimization**:
+
+```python
+# The following calls are for the manual API
+
+# The object returned by the search/optimization has many information!
+search
+# Best score
+search.fun
+# Best hyperparameters (index is definition order in hyperparameter space/list)
+search.x[0]
+search.x[1]
+
+# We can see how many iterations are really necessary, and whether we reached the optimum
+plot_convergence(search)
+
+# It shows the selection of hyperparameter values along the different calls
+params_examine = ['param_name_1', 'param_name_2']
+plot_evaluations(search, plot_dims=params_examine)
+
+# It shows the response as function of different hyperparameter values
+params_examine = ['param_name_1', 'param_name_2']
+plot_objective(search, plot_dims=params_examine)
+
+# Create a dataframe with all trials
+experiment_stats = pd.concat([
+    pd.DataFrame(search.x_iters),
+    pd.Series(search.func_vals),
+], axis=1)
+experiment_stats.columns = params_examine + ['accuracy'] # or the score selected in objective
+experiment_stats.sort_values(by='accuracy', ascending=True, inplace=True)
+experiment_stats.head()
+
+```
+
+### Example Notebooks
+
+This is the list of the example notebooks in this section:
+
+- [`01-Search-space-distributions.ipynb`](./Section-10-Scikit-Optimize/01-Search-space-distributions.ipynb)
+- [`02-Randomized-Search.ipynb`](./Section-10-Scikit-Optimize/02-Randomized-Search.ipynbb)
+- [`03-Bayesian-Optimization-GP-Manual.ipynb`](./Section-10-Scikit-Optimize/03-Bayesian-Optimization-GP-Manual.ipynb)
+- [`04-Bayesian-Optimization-Random-Forest.ipynb`](./Section-10-Scikit-Optimize/04-Bayesian-Optimization-Random-Forests.ipynb)
+- [`05-Bayesian-Optimization-GBM.ipynb`](./Section-10-Scikit-Optimize/05-Bayesian-Optimization-GBM.ipynb)
+- [`06-Parallelization.ipynb`](./Section-10-Scikit-Optimize/06-Parallelization.ipynb)
+- [`07-Bayesian-Optimization-Sklearn-wrapper.ipynb`](./Section-10-Scikit-Optimize/07-Bayesian-Optimization-Sklearn-wrapper.ipynb)
+- [`08-Bayesian-Optimization-Change-Kernel.ipynb`](./Section-10-Scikit-Optimize/08-Bayesian-Optimization-Change-Kernel.ipynb)
+- [`09-Bayesian-Optimization-xgb-Optional.ipynb`](./Section-10-Scikit-Optimize/09-Bayesian-Optimization-xgb-Optional.ipynb)
+- [`10-Bayesian-Optimization-CNN.ipynb`](./Section-10-Scikit-Optimize/10-Bayesian-Optimization-CNN.ipynb)
+
+These example notebooks in this section do not introduce almost anything new since the content in most of them has been implemented in prior sections; the exception is the **parallelization** notebook, which shows how we can parallelize search/optimization algorithms. Recall that random and grid searches are easily parallelizable because each trial is independent from the other; in contrast, sequential methods (Bayesian search with Gaussian processes, SMACs, etc.) are difficult to parallelize, because each trial depends on the previous. The way they are parallelized is with trial branches: each thread/sub-process works on a sequence of trials.
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import cross_val_score, train_test_split
+
+from skopt import Optimizer # for the optimization
+from joblib import Parallel, delayed # for the parallelization
+
+from skopt.space import Real, Integer, Categorical
+from skopt.utils import use_named_args
+
+# load dataset
+breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
+X = pd.DataFrame(breast_cancer_X)
+y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+# split dataset into a train and test set
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# Scikit-optimize parameter grid is a list
+param_grid = [
+    Integer(10, 120, name="n_estimators"),
+    Integer(1, 5, name="max_depth"),
+    Real(0.0001, 0.1, prior='log-uniform', name='learning_rate'),
+    Real(0.001, 0.999, prior='log-uniform', name="min_samples_split"),
+    Categorical(['deviance', 'exponential'], name="loss"),
+]
+
+# set up the gradient boosting classifier
+gbm = GradientBoostingClassifier(random_state=0)
+
+# We design a function to maximize the accuracy, of a GBM,
+# with cross-validation
+# the decorator allows our objective function to receive the parameters as
+# keyword arguments. This is a requirement for scikit-optimize.
+@use_named_args(param_grid)
+def objective(**params):
+    
+    # model with new parameters
+    gbm.set_params(**params)
+
+    # optimization function (hyperparam response function)
+    value = np.mean(
+        cross_val_score(
+            gbm, 
+            X_train,
+            y_train,
+            cv=3,
+            n_jobs=-4,
+            scoring='accuracy')
+    )
+
+    # negate because we need to minimize
+    return -value
+
+# We use the Optimizer
+#   https://scikit-optimize.github.io/stable/modules/generated/skopt.Optimizer.html
+# In contrast to other optimization functions,
+# this one doesn't run the entire optimization when instantiated,
+# instead, we need to run optimizer.ask() on it
+# which we do in different threads using joblib.Parallel.
+# We define the number of parallel jobs with
+#   n_jobs=n_points = 4 parallel jobs
+# Additionally, the number of initial evaluations is defined here, too
+#   n_initial_points=10
+n_points = 4
+optimizer = Optimizer(
+    dimensions = param_grid, # the hyperparameter space
+    base_estimator = "GP", # the surrogate; options: "GP", "RF", "ET", "GBRT"
+    n_initial_points=10, # the number of points to evaluate f(x) to start of
+    acq_func='EI', # the acquisition function
+    random_state=0, 
+    n_jobs=n_points,
+)
+
+# Now, we run the calls in parallel,
+# we will use 4 CPUs, i.e., 4 parallel jobs (n_points);
+# if we loop 10 times using 4 end points, we perform 40 searches in total
+n_calls = 10
+for i in range(n_calls):
+    # n_points: number of parallel jobs
+    x = optimizer.ask(n_points=n_points)  # x is a list of parallel hyperparameter spaces 
+    y = Parallel(n_jobs=n_points)(delayed(objective)(v) for v in x)  # evaluate points in parallel
+    optimizer.tell(x, y)
+
+# the evaluated hyperparamters: X
+optimizer.Xi
+
+# the accuracy: y, the selected score in the objective function
+optimizer.yi
+
+# all together in one dataframe, so we can investigate further
+dim_names = ['n_estimators', 'max_depth', 'min_samples_split', 'learning_rate', 'loss']
+tmp = pd.concat([
+    pd.DataFrame(optimizer.Xi),
+    pd.Series(optimizer.yi),
+], axis=1)
+tmp.columns = dim_names + ['accuracy']
+tmp.head()
+
+# This is equivalent to plot_convergence()
+tmp['accuracy'].sort_values(ascending=False).reset_index(drop=True).plot()
+```
+
+## Section 11: Hyperopt Review and Summary
 
 
 
-## Section 10
-
-
-
-## Section 11
-
-
-
-## Section 12
+## Section 12: Optuna Review
 
 
 
