@@ -86,8 +86,9 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 		- [Example: Manual Bayesian Optimization of a Keras-CNN](#example-manual-bayesian-optimization-of-a-keras-cnn)
 	- [Section 7: Other Sequential Model-Based Optimization (SMBO) Methods](#section-7-other-sequential-model-based-optimization-smbo-methods)
 		- [SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates](#smacs-sequential-model-based-algorithm-configuration-using-tree-based-models-as-surrogates)
-		- [TPE: Tree-Structured Parzen Estimators](#tpe-tree-structured-parzen-estimators)
-	- [Section 8](#section-8)
+		- [TPE: Tree-Structured Parzen Estimators with Hyperopt](#tpe-tree-structured-parzen-estimators-with-hyperopt)
+		- [Comparison of the Algorithms: Which one Should We Use?](#comparison-of-the-algorithms-which-one-should-we-use)
+	- [Section 8: Multi-Fidelity Optimization](#section-8-multi-fidelity-optimization)
 	- [Section 9](#section-9)
 	- [Section 10](#section-10)
 	- [Section 11](#section-11)
@@ -2213,13 +2214,398 @@ fm_ = forest_minimize(
 )
 ```
 
-### TPE: Tree-Structured Parzen Estimators
+### TPE: Tree-Structured Parzen Estimators with Hyperopt
 
+Tree-structured Parzen estimators do not approximate the `f(x)` response function, but the distirbution of the hyperparameters `x`:
 
+- SMBO methods estimate `P(f(x)|x)`
+- TPE estimates `P(x|f(x))`
 
-## Section 8
+From that distribution, they reach the hyperparameter set that leads to the optium response value.
 
+Process: we repeat this for each hyperparameter:
 
+- The hyperparameter space is sampled and `f(x)` computed.
+- The sampled `x` values are classified as
+  - Small: those which lead to a small `f(x)`
+  - Large: the rest
+  - The threshold is usually a quantile fraction, `gamma = 0.25` by default.
+- For each subset, the distribution density function is computed using kernels; we basically but Gaussians in each point. The used kernels are Parzen windows. An important parameter is the spread we use for them, aka., the window size; but usually, the default value is left.
+  - `L(x)`: distribution of Small subset
+  - `G(x)`: distribution of Large subset
+- Then, we draw samples from `L(x)`; the number of samples is also a parameter, but the default is used. For each sample, we evaluate the acquisition function, which determines which of the drawn samples has the highes likelihood of leading to a smaller `f(x)`.
+  - The acquisition function is composed by `L` and `G`: `(gamma + (G(x)/L(x))*(1-gamma))^(-1)`
+- Then, the distributions `L(x)` and `G(x)` are updated.
+- We continue until we converge.
+
+The TPE method is implemented in [Hyperopt](http://hyperopt.github.io/hyperopt/). We can modify the parameters mentioned in the process, but often the default are left.
+
+The reason TPE is a **tree**-based method is that we can run it with nested hyperparameter combinations in which we even define different models (linear, trees, neural networks, etc.). We can do that because each hyperparameter is analyzed independently from the others. If we don't have the case in which we want to use a nested approach, TPEs lead to worse performance, because the inter-relationships between hyperparameters are ignored; but if we need to test nested hyperparameter sets, TPE is the choice. Another method which allows for nested testing is the good old random search.
+
+The notebook where the default TPE is tried with a Keras-CNN is very similar to the previous one, but the Hyperopt library is used: [`03-TPE-with-CNN.ipynb`](./Section-07-Other-SMBO-Models/03-TPE-with-CNN.ipynb).
+
+Hyperopt needs also the definition of the `objective()` function, and optionally, the object `Trials()` to record the data from the calls; then, the `objective()` is passed to the minimization function `fmin()`. That optimization API also accepts the algorithm which will be used, i.e., `tpe.suggest`. We can use other minimization algorithms, such as *simulated annealing*, which is passed as `anneal.suggest`.
+
+Interesting links:
+
+- [Hyperparameters tunning with Hyperopt](https://www.kaggle.com/code/ilialar/hyperparameters-tunning-with-hyperopt)
+- [Simulated Annealing](https://en.wikipedia.org/wiki/Simulated_annealing)
+
+```python
+# For reproducible results.
+# See: 
+# https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
+
+import os
+os.environ['PYTHONHASHSEED'] = '0'
+
+import numpy as np
+import tensorflow as tf
+import random as python_random
+
+# The below is necessary for starting Numpy generated random numbers
+# in a well-defined initial state.
+np.random.seed(123)
+
+# The below is necessary for starting core Python generated random numbers
+# in a well-defined state.
+python_random.seed(123)
+
+# The below set_seed() will make random number generation
+# in the TensorFlow backend have a well-defined initial state.
+# For further details, see:
+# https://www.tensorflow.org/api_docs/python/tf/random/set_seed
+tf.random.set_seed(1234)
+
+import itertools
+from functools import partial
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+from keras.utils.np_utils import to_categorical
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Flatten, Conv2D, MaxPool2D
+from keras.optimizers import Adam
+from keras.callbacks import ReduceLROnPlateau
+
+from hyperopt import hp, tpe, fmin, Trials
+
+# Load the data
+data = pd.read_csv("../data/train.csv")
+# first column is the target, the rest of the columns
+# are the pixels of the image
+# each row is 1 image
+
+# split dataset into a train and test set
+
+X_train, X_test, y_train, y_test = train_test_split(
+    data.drop(['label'], axis=1), # the images
+    data['label'], # the target
+    test_size = 0.1,
+    random_state=0)
+
+# Re-scale the data
+# 255 is the maximum value a pixel can take
+X_train = X_train / 255
+X_test = X_test / 255
+
+# Reshape image in 3 dimensions:
+# height: 28px X width: 28px X channel: 1 
+X_train = X_train.values.reshape(-1,28,28,1)
+X_test = X_test.values.reshape(-1,28,28,1)
+
+# the target is 1 variable with the 9 different digits
+# as values
+y_train.unique()
+# 2, 0, 7, 4, 3, 5, 9, 6, 8, 1
+
+# For Keras, we need to create 10 dummy variables,
+# one for each digit
+
+# Encode labels to one hot vectors (ex : digit 2 -> [0,0,1,0,0,0,0,0,0,0])
+y_train = to_categorical(y_train, num_classes = 10)
+y_test = to_categorical(y_test, num_classes = 10)
+
+# Some image examples 
+g = plt.imshow(X_train[0][:,:,0])
+
+# determine the hyperparameter space
+param_grid = {
+    'learning_rate': hp.uniform('learning_rate', 1e-6, 1e-2),
+    'num_conv_layers': hp.quniform('num_conv_layers', 1, 3, 1),
+    'num_dense_layers': hp.quniform('num_dense_layers', 1, 5, 1),
+    'num_dense_nodes': hp.quniform('num_dense_nodes', 5, 512, 1),
+    'activation': hp.choice('activation', ['relu', 'sigmoid']),
+}
+
+# function to create the CNN
+def create_cnn(
+    # the hyperparam to optimize are passed
+    # as arguments
+    learning_rate,
+    num_conv_layers,
+    num_dense_layers,
+    num_dense_nodes,
+    activation,
+):
+    """
+    Hyper-parameters:
+    learning_rate:        Learning-rate for the optimizer.
+    convolutional layers: Number of conv layers.
+    num_dense_layers:     Number of dense layers.
+    num_dense_nodes:      Number of nodes in each dense layer.
+    activation:           Activation function for all layers.
+    """
+
+    # Start construction of a Keras Sequential model.
+    model = Sequential()
+
+    # First convolutional layer.
+    # There are many hyper-parameters in this layer
+    # For this demo, we will optimize the activation function and
+    # the number of convolutional layers that it can take.
+    
+    # We add the different number of conv layers in the following loop:
+    
+    for i in range(num_conv_layers):
+        model.add(Conv2D(kernel_size=5, strides=1, filters=16, padding='same',
+                         activation=activation))
+    model.add(MaxPool2D(pool_size=2, strides=2))
+
+    # Second convolutional layer.
+    # Same hyperparameters to optimize as previous layer.
+    for i in range(num_conv_layers):
+        model.add(Conv2D(kernel_size=5, strides=1, filters=36, padding='same',
+                         activation=activation))
+    model.add(MaxPool2D(pool_size=2, strides=2))
+
+    # Flatten the 4-rank output of the convolutional layers
+    # to 2-rank that can be input to a fully-connected Dense layer.
+    model.add(Flatten())
+
+    # Add fully-connected Dense layers.
+    # The number of layers is a hyper-parameter we want to optimize.
+    # We add the different number of layers in the following loop:
+    
+    for i in range(num_dense_layers):
+        
+        # Add the dense fully-connected layer to the model.
+        # This has two hyper-parameters we want to optimize:
+        # The number of nodes (neurons) and the activation function.
+        model.add(Dense(num_dense_nodes,
+                        activation=activation,
+                        ))
+
+    # Last fully-connected dense layer with softmax-activation
+    # for use in classification.
+    model.add(Dense(10, activation='softmax'))
+
+    # Use the Adam method for training the network.
+    # We want to find the best learning-rate for the Adam method.
+    optimizer = Adam(lr=learning_rate)
+
+    # In Keras we need to compile the model so it can be trained.
+    model.compile(optimizer=optimizer,
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    return model
+
+# we will save the model with this name
+path_best_model = 'cnn_model.h5'
+
+# starting point for the optimization
+best_accuracy = 0
+
+def objective(params):
+    
+    """
+    Hyper-parameters:
+    learning_rate:        Learning-rate for the optimizer.
+    convolutional layers: Number of conv layers.
+    num_dense_layers:     Number of dense layers.
+    num_dense_nodes:      Number of nodes in each dense layer.
+    activation:           Activation function for all layers.
+    """
+
+    # Print the hyper-parameters.        
+    print('learning rate: ', params['learning_rate'])
+    print('num_conv_layers: ', int(params['num_conv_layers']))
+    print('num_dense_layers: ',int(params['num_dense_layers']))
+    print('num_dense_nodes: ', int(params['num_dense_nodes']))
+    print('activation: ', params['activation'])
+    print()
+    
+    # Create the neural network with the hyper-parameters.
+    # We call the function we created previously.
+    model = create_cnn(learning_rate=params['learning_rate'],
+                       num_conv_layers=int(params['num_conv_layers']),
+                       num_dense_layers=int(params['num_dense_layers']),
+                       num_dense_nodes=int(params['num_dense_nodes']),
+                       activation=params['activation'],
+                       )
+
+   
+    # Set a learning rate annealer
+    # this reduces the learning rate if learning does not improve
+    # for a certain number of epochs
+    learning_rate_reduction = ReduceLROnPlateau(monitor='val_accuracy', 
+                                                patience=2, 
+                                                verbose=1, 
+                                                factor=0.5, 
+                                                min_lr=0.00001)
+   
+    # train the model
+    # we use 3 epochs to be able to run the notebook in a "reasonable"
+    # time. If we increase the epochs, we will have better performance
+    # this could be another parameter to optimize in fact.
+    history = model.fit(x=X_train,
+                        y=y_train,
+                        epochs=3,
+                        batch_size=128,
+                        validation_split=0.1,
+                        callbacks=learning_rate_reduction,
+                        verbose=0) # on Windows, all steps of the progress bar are saved...
+
+    # Get the classification accuracy on the validation-set
+    # after the last training-epoch.
+    accuracy = history.history['val_accuracy'][-1]
+
+    # Print the classification accuracy.
+    print()
+    print("Accuracy: {0:.2%}".format(accuracy))
+    print()
+
+    # Save the model if it improves on the best-found performance.
+    # We use the global keyword so we update the variable outside
+    # of this function.
+    global best_accuracy
+
+    # If the classification accuracy of the saved model is improved ...
+    if accuracy > best_accuracy:
+        # Save the new model to harddisk.
+        # Training CNNs is costly, so we want to avoid having to re-train
+        # the network with the best found parameters. We save it instead
+        # as we search for the best hyperparam space.
+        model.save(path_best_model)
+        
+        # Update the classification accuracy.
+        best_accuracy = accuracy
+
+    # Delete the Keras model with these hyper-parameters from memory.
+    del model
+
+    
+    # Remember that Scikit-optimize always minimizes the objective
+    # function, so we need to negate the accuracy (because we want
+    # the maximum accuracy)
+    return -accuracy
+
+# Before we run the hyper-parameter optimization,
+# let's first check that the everything is working
+# by passing some default hyper-parameters.
+
+default_parameters = {
+    'learning_rate': 1e-5,
+    'num_conv_layers': 1,
+    'num_dense_layers': 1,
+    'num_dense_nodes': 16,
+    'activation': 'relu',
+}
+
+# Test objective function
+objective(default_parameters)
+# learning rate:  1e-05
+# num_conv_layers:  1
+# num_dense_layers:  1
+# num_dense_nodes:  16
+# activation:  relu
+# Accuracy: 51.69%
+
+# fmin performs the minimization
+# tpe.suggest samples the parameters following tpe
+
+# SMBO: TPE
+# fmin performs the minimization
+# tpe.suggest samples the parameters following tpe
+# with default parameters for TPE.
+# We can pass another algorithm, too, e.g.: anneal.suggest
+# this one is the simulated annealing algorithm:
+# https://en.wikipedia.org/wiki/Simulated_annealing
+# https://www.kaggle.com/code/ilialar/hyperparameters-tunning-with-hyperopt
+trials = Trials()
+search = fmin(
+    fn=objective,
+    space=param_grid,
+    max_evals=10, #30,
+    rstate=np.random.default_rng(42),
+    algo=tpe.suggest,  # tpe
+	#algo=anneal.suggest,  # simulated annealing
+    trials=trials
+)
+
+# tpe.suggest default parameters:
+# https://github.com/hyperopt/hyperopt/blob/master/hyperopt/tpe.py#L781
+# to override the defo parameters:
+# https://github.com/hyperopt/hyperopt/issues/632
+
+# the best hyperparameters can also be found in
+# trials
+trials.argmin
+
+results = pd.concat([
+    pd.DataFrame(trials.vals),
+    pd.DataFrame(trials.results)],
+    axis=1,
+).sort_values(by='loss', ascending=False).reset_index(drop=True)
+
+results['loss'].plot()
+plt.ylabel('Accuracy')
+plt.xlabel('Hyperparam combination')
+
+```
+
+### Comparison of the Algorithms: Which one Should We Use?
+
+[Comparison between tuning algorithms](./assets/comparison_algorithms_1.jpg)
+
+[Comparison between tuning algorithms](./assets/comparison_algorithms_2.jpg)
+
+[Choosing an algorithm](./assets/choosing_a_method.jpg)
+
+Summary:
+
+- For smaller models use `RandomSearchCV`.
+- For bigger models, staring with trees, try also `BayesSearchCV`.
+- For biggest models (neural networks), try SMAC, Bayes Search or TPE.
+
+## Section 8: Multi-Fidelity Optimization
+
+In this section, methods that use different types of fidelities of `f(x)` qualities are briefly introduced.
+
+As seen until now:
+
+- Random search is the best method for small-medium-sized models; but it is *computation intensive*.
+- Sequential model-based optimization methods (Bayesian optimization, SMACs, TPE) are better suited for medium-large models in which evaluating the `f(x)` response surface is expensive; but these methods are *time intensive*.
+
+Multi-fidelity optimization methods achieve good results on a time budget; they do that evaluating a *cheaper* version of `f(x)`; in fact they combine the results of:
+
+- Many cheap `f(x)` evaluations
+- Few accurate `f(x)` evaluations
+
+A cheap `f(x)` evaluation/representation can be achieved with:
+
+- Reduced dataset
+- Reduced number of features
+- Early stopping
+- Cheaper value of a hyperparameter
+
+One implementation of a multi-fidelity method is in Scikit-Learn: [Successive Halving](https://scikit-learn.org/stable/auto_examples/model_selection/plot_successive_halving_iterations.html): `HalvingGridSearchCV`, `HalvingRandomSearchCV`.
 
 ## Section 9
 
