@@ -16,6 +16,7 @@ tensorflow
 hyperopt==0.2.5
 scikit-optimize==0.8.1 #0.9.0 #0.8.1
 optuna==2.7.0
+optuna-dashboard
 
 # tools
 jupyter
