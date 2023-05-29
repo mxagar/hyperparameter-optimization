@@ -97,6 +97,11 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
     - [Overview of the API](#overview-of-the-api-1)
     - [Example Notebooks](#example-notebooks-1)
   - [Section 12: Optuna Guide](#section-12-optuna-guide)
+    - [API Overview](#api-overview)
+    - [Example Notebooks](#example-notebooks-2)
+      - [Optimizing a Keras-CNN with Optuna](#optimizing-a-keras-cnn-with-optuna)
+      - [Evaluating a Hyperparameter Search with Optuna](#evaluating-a-hyperparameter-search-with-optuna)
+    - [Dashboard](#dashboard)
   - [Section 13: Ax Platform Guide](#section-13-ax-platform-guide)
 
 ## Setup
@@ -2209,7 +2214,7 @@ Bayesian optimization is one type of Sequential Model-Based Optimization (SMBO) 
 
 In particular, when we apply Bayesian optimization, Gaussian Processes are regressed as a surrogate of the real `f(x)` with observations and used to estimate the minimum/maximum point. The regression is done sequentially and the `x` values to be used at each step are given by the acquisition functions.
 
-However, there are other SMBO methods different to the introduced Bayesian optimization. These alternative methods, follow a similar approach as the Bayesian optimization, but the surrogate function and its regression are different. Methods introduced in this section:
+However, there are other SMBO methods different to the introduced Bayesian optimization with Gaussian Processes. These alternative methods, follow a similar approach, they are a Bayesian optimization, but the surrogate function and its regression are different. Methods introduced in this section:
 
 - SMACs: Instead of Gaussian Processes, we can use Random Forests and Gradient Boosted Models (GBM) as the surrogate function.
 - TPE: Tree-structured Parzen estimators: Non-standard Bayesian optimization.
@@ -2247,8 +2252,8 @@ fm_ = forest_minimize(
 
 Tree-structured Parzen estimators do not approximate the `f(x)` response function, but the distirbution of the hyperparameters `x`:
 
-- SMBO methods estimate `P(f(x)|x)`
-- TPE estimates `P(x|f(x))`
+- Many SMBO methods estimate `P(f(x)|x)`
+- TPE is also a SMBO method, but it estimates `P(x|f(x))`
 
 From that distribution, they reach the hyperparameter set that leads to the optium response value.
 
@@ -2258,8 +2263,8 @@ Process: we repeat this for each hyperparameter:
 - The sampled `x` values are classified as
   - Small: those which lead to a small `f(x)`
   - Large: the rest
-  - The threshold is usually a quantile fraction, `gamma = 0.25` by default.
-- For each subset, the distribution density function is computed using kernels; we basically but Gaussians in each point. The used kernels are Parzen windows. An important parameter is the spread we use for them, aka., the window size; but usually, the default value is left.
+  - The threshold is usually a quantile fraction, e.g., `gamma = 0.25`.
+- For each subset, the distribution density function is computed using kernels; we basically put Gaussians in each point. The used kernels are Parzen windows. An important parameter is the spread we use for them, aka., the window size; but usually, the default value is left.
   - `L(x)`: distribution of Small subset
   - `G(x)`: distribution of Large subset
 - Then, we draw samples from `L(x)`; the number of samples is also a parameter, but the default is used. For each sample, we evaluate the acquisition function, which determines which of the drawn samples has the highes likelihood of leading to a smaller `f(x)`.
@@ -2269,7 +2274,7 @@ Process: we repeat this for each hyperparameter:
 
 The TPE method is implemented in [Hyperopt](http://hyperopt.github.io/hyperopt/). We can modify the parameters mentioned in the process, but often the default are left.
 
-The reason TPE is a **tree**-based method is that we can run it with nested hyperparameter combinations in which we even define different models (linear, trees, neural networks, etc.). We can do that because each hyperparameter is analyzed independently from the others. If we don't have the case in which we want to use a nested approach, TPEs lead to worse performance, because the inter-relationships between hyperparameters are ignored; but if we need to test nested hyperparameter sets, TPE is the choice. Another method which allows for nested testing is the good old random search.
+The reason TPE is a **tree**-based method is that we can run it with nested hyperparameter combinations in which we even define different models (linear, trees, neural networks, etc.). We can do that because each hyperparameter is analyzed independently from the others. If we don't have the case in which we want to use a nested approach, TPEs can lead to worse performance, because the inter-relationships between hyperparameters are ignored; but if we need to test nested hyperparameter sets, TPE is the choice. Another method which allows for nested testing is the good old random search.
 
 The notebook where the default TPE is tried with a Keras-CNN is very similar to the previous one, but the Hyperopt library is used: [`03-TPE-with-CNN.ipynb`](./Section-07-Other-SMBO-Models/03-TPE-with-CNN.ipynb).
 
@@ -3193,11 +3198,536 @@ This is the list of the example notebooks in this section:
 
 ## Section 12: Optuna Guide
 
+This framework is new: it is described in the course, but it wasn't introudced until now.
 
+Optuna is a very nice hyperparameter optimization engine which seems to be called to replace the previous ones. Links:
+
+- [Website](https://optuna.org/)
+- [Docs](https://optuna.readthedocs.io/en/stable/index.html)
+- [Github](https://github.com/optuna/optuna)
+- [Article](https://arxiv.org/abs/1907.10902)
+
+Main advantages, features:
+
+- Pythonic, easy to use.
+- Nice [documentation](https://optuna.readthedocs.io/en/stable/index.html) and [code examples](https://optuna.org/#code_examples) for the most important ML libraries.
+- The `objective()` function created by the user, as in the other libraries, and that's where almost everything related to the tuning is specified.
+- We create the hyperparameter space within the `objective()` using python, i.e., we can create easy-to-understand nested/conditional spaces, the model and everythin we need in the `objective()`; this is called *design-by-run API*. For the hyperparameter space, we can use, as always, *reals*, *integers* and *categoricals*, and the distrubutions are currently the *uniform* and the *log-uniform*.
+- Many and poweful sampling algorithms:
+  - Grid search, random search.
+  - TPE: Tree-structured Parzen Estimators.
+  - CMA-ES
+  - Multi-objective samplers: NSGA-II or MOTPE.
+- The acquisition function cannot be chosen, it is part of the algorithm; used functions:
+  - Expected Improvement (EI)
+  - Expected hypervolume improvement (EHVI)
+- We can set a pruner, i.e., a method by which we stop the optimization if the obtained performance/score is not being good.
+- Search analysis is great:
+  - The search/study returns a dataframe.
+  - We can store the results in a SQLite databse, and perform queries in parallel; we can also load the SQLite database and keep on with trials later on.
+  - We can do the analysis loading the SQLite database, too.
+  - We have many built-in functions for plotting, both with a Matplotlib and a Plotly (interactive) backend.
+  - There is a [dashboard](https://optuna.org/#dashboard) for the analysis.
+
+### API Overview
+
+The following overview is given using the code from the notebook 
+[`02-Conditional-Spaces-Multiple-Models.ipynb`](./Section-12-Optuna/02-Conditional-Spaces-Multiple-Models.ipynb):
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+
+import optuna
+
+breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
+X = pd.DataFrame(breast_cancer_X)
+y = pd.Series(breast_cancer_y).map({0:1, 1:0})
+
+# the dataset is defined outside, but used in objective()
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=0)
+
+# objective function with nested spaces
+def objective(trial):
+    # The trial object is created under the hood, we don't instantiate it manually
+    # https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html
+    # We can create hyperparameter spaces with it:
+    # suggest_categorical(): Suggest a value for the categorical parameter.
+    # suggest_discrete_uniform(name, low, high, q): Suggest a value for the discrete parameter.
+    # suggest_float(name, low, high, *[, step, log]): Suggest a value for the floating point parameter.
+    # suggest_int(name, low, high[, step, log]): Suggest a value for the integer parameter.
+    # suggest_loguniform(name, low, high): Suggest a value for the continuous parameter.
+    # suggest_uniform(name, low, high): Suggest a value for the continuous parameter.
+
+    # first hypperparameter: model type
+    classifier_name = trial.suggest_categorical("classifier", ["LR", "RF", 'GBM'])
+    # depending on the model: define specific space + model
+    if classifier_name == "LR":
+        # define hyperparameter space of model
+        logit_penalty = trial.suggest_categorical('logit_penalty', ['l1','l2'])
+        logit_c = trial.suggest_float('logit_c', 0.001, 10)
+        logit_solver = 'saga'
+        # instantiate model
+        model = LogisticRegression(
+            penalty=logit_penalty,
+            C=logit_c,
+            solver=logit_solver,
+        )
+        
+    elif classifier_name =="RF":
+        
+        rf_n_estimators = trial.suggest_int("rf_n_estimators", 100, 1000)
+        rf_criterion = trial.suggest_categorical("rf_criterion", ['gini', 'entropy'])
+        rf_max_depth = trial.suggest_int("rf_max_depth", 1, 4)
+        rf_min_samples_split = trial.suggest_float("rf_min_samples_split", 0.01, 1)
+
+        model = RandomForestClassifier(
+            n_estimators=rf_n_estimators,
+            criterion=rf_criterion,
+            max_depth=rf_max_depth,
+            min_samples_split=rf_min_samples_split,
+        )
+        
+    else:
+        
+        gbm_n_estimators = trial.suggest_int("gbm_n_estimators", 100, 1000)
+        gbm_criterion = trial.suggest_categorical("gbm_criterion", ['mse', 'friedman_mse'])
+        gbm_max_depth = trial.suggest_int("gbm_max_depth", 1, 4)
+        gbm_min_samples_split = trial.suggest_float("gbm_min_samples_split", 0.01, 1)
+
+        model = GradientBoostingClassifier(
+            n_estimators=gbm_n_estimators,
+            criterion=gbm_criterion,
+            max_depth=gbm_max_depth,
+            min_samples_split=gbm_min_samples_split,
+        )
+
+    # cross-validation: dataset is defined outside
+    score = cross_val_score(model, X_train, y_train, cv=3)
+    accuracy = score.mean()
+    
+    return accuracy
+
+# create an optimization study: we pass the sampling/search algorithm here!
+study = optuna.create_study(
+    # we can minimize/maximize
+    direction="maximize",
+    # we can remove this line, TPS is default
+    sampler=optuna.samplers.TPESampler(),
+)
+# Parameters of create_study()
+# https://optuna.readthedocs.io/en/stable/reference/generated/optuna.study.create_study.html#optuna.study.create_study
+# - storage: url to a database
+# - sampler: the hyperparameter search algorithm (dafault: TPE)
+#        optuna.samplers.GridSampler(): in this case the param_grid is a dict with lists defined outside from objective() and passed to GridSampler() directly
+#        optuna.samplers.RandomSampler()
+#        optuna.samplers.TPESampler(): default
+#        optuna.samplers.CmaEsSampler()
+#        ...
+# - pruner: the algorithm to prune unsuccessful trials (default: MedianPruner); the optimization stops if the performances are not good
+#        optuna.pruners.MedianPruner()
+#        optuna.pruners.NopPruner()
+#        optuna.pruners.PercentilePruner()
+#        ...
+# - direction: 'minimize' or 'maximize'
+# - study_name: name for the study, in case saved and retrieved later
+
+# run the optimization: we pass to it the objective and the number of trials
+study.optimize(objective, n_trials=20)
+
+# best hyperparameters
+study.best_params
+# {'classifier': 'GBM',
+#  'gbm_n_estimators': 301,
+#  'gbm_criterion': 'mse',
+#  'gbm_max_depth': 2,
+#  'gbm_min_samples_split': 0.7450851430645121}
+
+# best score
+study.best_value
+
+# dataframe with all trials: ech row is a trial
+study.trials_dataframe()
+
+# manual convergence plot
+results['value'].sort_values().reset_index(drop=True).plot()
+plt.title('Convergence plot')
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+```
+
+### Example Notebooks
+
+This is the list of example notebooks:
+
+- [`01-Search-algorithms.ipynb`](./Section-12-Optuna/01-Search-algorithms.ipynb)
+- [`02-Conditional-Spaces-Multiple-Models.ipynb`](./Section-12-Optuna/02-Conditional-Spaces-Multiple-Models.ipynb)
+- [`03-Optimizing-a-CNN.ipynb`](./Section-12-Optuna/03-Optimizing-a-CNN.ipynb)
+- [`04-Optimizing-a-CNN-extended.ipynb`](./Section-12-Optuna/04-Optimizing-a-CNN-extended.ipynb)
+- [`05-Evaluating-the-search.ipynb`](./Section-12-Optuna/05-Evaluating-the-search.ipynb)
+
+In the following, the code from the most important notebooks is added. Note that the [API Overview](#api-overview) section already gives a very good usage example.
+
+#### Optimizing a Keras-CNN with Optuna
+
+Notebook: [`03-Optimizing-a-CNN.ipynb`](./Section-12-Optuna/03-Optimizing-a-CNN.ipynb).
+
+```python
+# For reproducible results.
+# See: 
+# https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
+
+import os
+os.environ['PYTHONHASHSEED'] = '0'
+
+import numpy as np
+import tensorflow as tf
+import random as python_random
+
+# The below is necessary for starting Numpy generated random numbers
+# in a well-defined initial state.
+np.random.seed(123)
+
+# The below is necessary for starting core Python generated random numbers
+# in a well-defined state.
+python_random.seed(123)
+
+# The below set_seed() will make random number generation
+# in the TensorFlow backend have a well-defined initial state.
+# For further details, see:
+# https://www.tensorflow.org/api_docs/python/tf/random/set_seed
+tf.random.set_seed(1234)
+
+import itertools
+from functools import partial
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+from keras.utils.np_utils import to_categorical
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Flatten, Conv2D, MaxPool2D
+from keras.optimizers import Adam, RMSprop
+
+import optuna
+
+# Load the data
+data = pd.read_csv("../data/train.csv")
+# first column is the target, the rest of the columns
+# are the pixels of the image
+# each row is 1 image
+
+# split dataset into a train and test set
+
+X_train, X_test, y_train, y_test = train_test_split(
+    data.drop(['label'], axis=1), # the images
+    data['label'], # the target
+    test_size = 0.1,
+    random_state=0)
+
+# Re-scale the data
+# 255 is the maximum value a pixel can take
+X_train = X_train / 255
+X_test = X_test / 255
+
+# Reshape image in 3 dimensions:
+# height: 28px X width: 28px X channel: 1 
+X_train = X_train.values.reshape(-1,28,28,1)
+X_test = X_test.values.reshape(-1,28,28,1)
+
+# For Keras, we need to create 10 dummy variables,
+# one for each digit
+# Encode labels to one hot vectors (ex : digit 2 -> [0,0,1,0,0,0,0,0,0,0])
+y_train = to_categorical(y_train, num_classes = 10)
+y_test = to_categorical(y_test, num_classes = 10)
+
+# Some image examples 
+g = plt.imshow(X_train[0][:,:,0])
+
+# we will save the model with this name
+path_best_model = 'cnn_model.h5'
+
+# starting point for the optimization
+best_accuracy = 0
+
+# function to create the CNN
+
+def objective(trial):
+
+    # Start construction of a Keras Sequential model.
+    model = Sequential()
+
+    # Convolutional layers.
+
+    # We add the different number of conv layers in the following loop:
+    num_conv_layers = trial.suggest_int('num_conv_layers', 1, 3)
+
+    for i in range(num_conv_layers):
+        
+        # NOTE: As per the below configuration, the parameters of each
+        # convolutional layer will be identical, even though we draw their
+        # values every loop; this is achieved with the name: in each trial,
+        # the value of each hyperparameter defined with a name is identical.
+        # If we want to have different values in each loop,
+        # we should change the name, e.g.:
+        #   filters=trial.suggest_categorical(f'filters_{i}', [16, 32, 64])
+        #   kernel_size=trial.suggest_categorical(f'kernel_size_{i}', [3, 5])
+        #   ...
+        
+        # if we want different parameters in each layer, check next
+        # notebook
+
+        model.add(Conv2D(
+            filters=trial.suggest_categorical('filters', [16, 32, 64]),
+            kernel_size=trial.suggest_categorical('kernel_size', [3, 5]),
+            strides=trial.suggest_categorical('strides', [1, 2]),
+            activation=trial.suggest_categorical(
+                'activation', ['relu', 'tanh']),
+            padding='same',
+        ))
+
+    # we could also optimize these parameters if we wanted:
+    model.add(MaxPool2D(pool_size=2, strides=2))
+
+    # Flatten the 4-rank output of the convolutional layers
+    # to 2-rank that can be input to a fully-connected Dense layer.
+    model.add(Flatten())
+
+    # Add fully-connected Dense layers.
+    # The number of layers is a hyper-parameter we want to optimize.
+    # We add the different number of layers in the following loop:
+
+    num_dense_layers = trial.suggest_int('num_dense_layers', 1, 3)
+
+    for i in range(num_dense_layers):
+
+        # Add the dense fully-connected layer to the model.
+        # This has two hyper-parameters we want to optimize:
+        # The number of nodes (neurons) and the activation function.
+        model.add(Dense(
+            units=trial.suggest_int('units', 5, 512),
+            activation=trial.suggest_categorical(
+                'activation', ['relu', 'tanh']),
+        ))
+
+    # Last fully-connected dense layer with softmax-activation
+    # for use in classification.
+    model.add(Dense(10, activation='softmax'))
+
+    # Use the Adam method for training the network.
+    optimizer_name = trial.suggest_categorical(
+        'optimizer_name', ['Adam', 'RMSprop'])
+
+    if optimizer_name == 'Adam':
+        optimizer = Adam(lr=trial.suggest_float('learning_rate',  1e-6, 1e-2))
+    else:
+        optimizer = RMSprop(
+            lr=trial.suggest_float('learning_rate',  1e-6, 1e-2),
+            momentum=trial.suggest_float('momentum',  0.1, 0.9),
+        )
+
+    # In Keras we need to compile the model so it can be trained.
+    model.compile(optimizer=optimizer,
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    # train the model
+    # we use 3 epochs to be able to run the notebook in a "reasonable"
+    # time. If we increase the epochs, we will have better performance
+    # this could be another parameter to optimize in fact.
+    history = model.fit(
+        x=X_train,
+        y=y_train,
+        epochs=3,
+        batch_size=128, # this could be another hyperparameter
+        validation_split=0.1,
+    )
+
+    # Get the classification accuracy on the validation-set
+    # after the last training-epoch.
+    accuracy = history.history['val_accuracy'][-1]
+
+    # Save the model if it improves on the best-found performance.
+    # We use the global keyword so we update the variable outside
+    # of this function.
+    global best_accuracy
+
+    # If the classification accuracy of the saved model is improved ...
+    if accuracy > best_accuracy:
+        # Save the new model to harddisk.
+        # Training CNNs is costly, so we want to avoid having to re-train
+        # the network with the best found parameters. We save it instead
+        # as we search for the best hyperparam space.
+        model.save(path_best_model)
+
+        # Update the classification accuracy.
+        best_accuracy = accuracy
+
+    # Delete the Keras model with these hyper-parameters from memory.
+    del model
+
+    # Remember that Scikit-optimize always minimizes the objective
+    # function, so we need to negate the accuracy (because we want
+    # the maximum accuracy)
+    return accuracy
+
+# we need this to store the search
+# we will use it in the following notebook
+# NOTE: if the SQLite database exists, it is loaded
+# and the optimization keeps going from the last trial,
+# i.e., all the stored trail history is used.
+study_name = "cnn_study"  # unique identifier of the study.
+storage_name = "sqlite:///{}.db".format(study_name)
+
+study = optuna.create_study(
+    direction='maximize',
+    study_name=study_name,
+    storage=storage_name,
+    load_if_exists=True,
+)
+
+study.optimize(objective, n_trials=10) # 30
+
+study.best_params
+
+study.best_value
+
+results = study.trials_dataframe()
+results['value'].sort_values().reset_index(drop=True).plot()
+plt.title('Convergence plot')
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+
+# load best model
+model = load_model(path_best_model)
+model.summary()
+
+# make predictions in test set
+result = model.evaluate(x=X_test,
+                        y=y_test)
+
+# print evaluation metrics
+for name, value in zip(model.metrics_names, result):
+    print(name, value)
+
+# Predict the values from the validation dataset
+y_pred = model.predict(X_test)
+
+# Convert predictions classes to one hot vectors 
+y_pred_classes = np.argmax(y_pred, axis = 1)
+
+# Convert validation observations to one hot vectors
+y_true = np.argmax(y_test, axis = 1)
+
+# compute the confusion matrix
+cm = confusion_matrix(y_true, y_pred_classes) 
+
+# let's make it more colourful
+classes = 10
+
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Confusion matrix')
+plt.colorbar()
+tick_marks = np.arange(classes)
+plt.xticks(tick_marks, range(classes), rotation=45)
+plt.yticks(tick_marks, range(classes))
+
+for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(j, i, cm[i, j],
+             horizontalalignment="center",
+             color="white" if cm[i, j] > 100 else "black",
+            )
+
+plt.tight_layout()
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
+```
+
+#### Evaluating a Hyperparameter Search with Optuna
+
+Notebook: [`05-Evaluating-the-search.ipynb`](./Section-12-Optuna/05-Evaluating-the-search.ipynb).
+
+Visualization backends with same endpoints/functions:
+
+- [Matplotlib](https://optuna.readthedocs.io/en/stable/reference/visualization/matplotlib.html)
+- [Plotlib](https://optuna.readthedocs.io/en/stable/reference/visualization/index.html)
+
+More information: [Optuna Visualization](https://optuna.readthedocs.io/en/stable/tutorial/10_key_features/005_visualization.html#)
+
+- `optuna.visualization.matplotlib.plot_contour`: Plot the parameter relationship as contour plot in a study with Matplotlib.
+- `optuna.visualization.matplotlib.plot_edf`: Plot the objective value EDF (empirical distribution function) of a study with Matplotlib.
+- `optuna.visualization.matplotlib.plot_intermediate_values`: Plot intermediate values of all trials in a study with Matplotlib.
+- `optuna.visualization.matplotlib.plot_optimization_history`: Plot optimization history of all trials in a study with Matplotlib.
+- `optuna.visualization.matplotlib.plot_parallel_coordinate`: Plot the high-dimensional parameter relationships in a study with Matplotlib.
+- `optuna.visualization.matplotlib.plot_param_importances`: Plot hyperparameter importances with Matplotlib.
+- `optuna.visualization.matplotlib.plot_pareto_front`: Plot the Pareto front of a study.
+- `optuna.visualization.matplotlib.plot_slice`: Plot the parameter relationship as slice plot in a study with Matplotlib.
+- `optuna.visualization.matplotlib.is_available`: Returns whether visualization with Matplotlib is available or not.
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import optuna
+
+fig = optuna.visualization.matplotlib.plot_optimization_history(study)
+
+optuna.visualization.matplotlib.plot_contour(
+    study,
+    params=["num_conv_layers", "num_dense_layers", "optimizer_name", 'units'],
+)
+
+optuna.visualization.matplotlib.plot_slice(
+    study,
+    params=["num_conv_layers", "num_dense_layers", "optimizer_name", 'units'],
+)
+
+optuna.visualization.matplotlib.plot_param_importances(study)
+
+optuna.visualization.matplotlib.plot_parallel_coordinate(   
+    study,
+    params=["num_conv_layers", "num_dense_layers", "optimizer_name", 'units'],
+)
+
+optuna.visualization.matplotlib.plot_edf([study])
+
+# We can even load two studies and plot them together
+study_name2 = "cnn_study_2"
+storage_name2 = "sqlite:///{}.db".format(study_name2)
+
+study2 = optuna.load_study(
+    study_name=study_name2,
+    storage=storage_name2,
+)
+
+optuna.visualization.matplotlib.plot_edf([study, study2])
+```
+
+### Dashboard
+
+There is also an [Optuna Dashboard](https://github.com/optuna/optuna-dashboard), where we load the study/experiments database and create the plots interactively.
+
+```bash
+pip install optuna-dashboard
+optuna-dashboard sqlite:///example-study.db
+```
 
 ## Section 13: Ax Platform Guide
 
-This section was not in the original course and it was added by me; it introduces [Ax, the Adaptive Experimentation Platform](https://ax.dev/).
+This framework is new: it wasn't mentioned until now. In fact, this section was not in the original course and it was added by me; it introduces [Ax, the Adaptive Experimentation Platform](https://ax.dev/).
 
 There is a custom `README.md` in the folder [Section-13-Ax/](./Section-13-Ax/), along with a custom file of requirements.
 
