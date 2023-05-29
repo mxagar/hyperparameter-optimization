@@ -51,51 +51,53 @@ Modified by [Mikel Sagardia](https://mikelsagardia.io/) while folowing the assoc
 ## Table of Contents
 
 - [Hyperparameter tuning for Machine Learning](#hyperparameter-tuning-for-machine-learning)
-	- [Overview of Topics](#overview-of-topics)
-	- [Table of Contents](#table-of-contents)
-	- [Setup](#setup)
-		- [Datasets](#datasets)
-	- [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
-		- [Examples and Code](#examples-and-code)
-	- [Section 3: Performance Metrics](#section-3-performance-metrics)
-		- [Examples and Code](#examples-and-code-1)
-	- [Section 4: Cross-Validation](#section-4-cross-validation)
-		- [Cross-Validation Schemes](#cross-validation-schemes)
-		- [Hyperparameter Tuning with Different Cross-Validation Schemes](#hyperparameter-tuning-with-different-cross-validation-schemes)
-		- [Special Cross-Validation Schemes: Non-Independent Data](#special-cross-validation-schemes-non-independent-data)
-		- [Nested Cross-Validation](#nested-cross-validation)
-	- [Section 5: Basic Search Algorithms: Grid and Random](#section-5-basic-search-algorithms-grid-and-random)
-		- [Manual Search](#manual-search)
-		- [Grid Search](#grid-search)
-		- [Random Search](#random-search)
-		- [Random Search with Other Packages](#random-search-with-other-packages)
-			- [Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
-			- [Random Search with Hyperopt](#random-search-with-hyperopt)
-	- [Section 6: Bayesian Optimization with Scikit-Optimize](#section-6-bayesian-optimization-with-scikit-optimize)
-		- [Bayesian Inference](#bayesian-inference)
-		- [Bayes Rule](#bayes-rule)
-		- [Sequential Model-Based Optimization (SMBO)](#sequential-model-based-optimization-smbo)
-		- [Literature](#literature)
-		- [Scikit-Optimize for Bayesian Optimization: Notes](#scikit-optimize-for-bayesian-optimization-notes)
-		- [Example: Manual Gaussian Optimization of a Black Box 1D Function](#example-manual-gaussian-optimization-of-a-black-box-1d-function)
-		- [Example: Manual Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter](#example-manual-gaussian-optimiation-of-a-grandient-boosted-tree-with-1-hyperparameter)
-		- [Example: Manual Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters](#example-manual-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters)
-		- [Example: Automatic Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters (BayesSearchCV)](#example-automatic-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters-bayessearchcv)
-		- [Example: Bayes Optimization with Different Kernels (Manual)](#example-bayes-optimization-with-different-kernels-manual)
-		- [Example: Manual Bayesian Optimization of an XGBoost Classifier](#example-manual-bayesian-optimization-of-an-xgboost-classifier)
-		- [Example: Manual Bayesian Optimization of a Keras-CNN](#example-manual-bayesian-optimization-of-a-keras-cnn)
-	- [Section 7: Other Sequential Model-Based Optimization (SMBO) Methods](#section-7-other-sequential-model-based-optimization-smbo-methods)
-		- [SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates](#smacs-sequential-model-based-algorithm-configuration-using-tree-based-models-as-surrogates)
-		- [TPE: Tree-Structured Parzen Estimators with Hyperopt](#tpe-tree-structured-parzen-estimators-with-hyperopt)
-		- [Comparison of the Algorithms: Which one Should We Use?](#comparison-of-the-algorithms-which-one-should-we-use)
-	- [Section 8: Multi-Fidelity Optimization](#section-8-multi-fidelity-optimization)
-	- [Section 9: Empty](#section-9-empty)
-	- [Section 10: Scikit-Optimize Review and Summary](#section-10-scikit-optimize-review-and-summary)
-		- [Overview of the API](#overview-of-the-api)
-		- [Example Notebooks](#example-notebooks)
-	- [Section 11: Hyperopt Review and Summary](#section-11-hyperopt-review-and-summary)
-	- [Section 12: Optuna Review](#section-12-optuna-review)
-	- [Section 13: Ax Platform](#section-13-ax-platform)
+  - [Overview of Topics](#overview-of-topics)
+  - [Table of Contents](#table-of-contents)
+  - [Setup](#setup)
+    - [Datasets](#datasets)
+  - [Section 2: Hyperparameter Tuning: Overview](#section-2-hyperparameter-tuning-overview)
+    - [Examples and Code](#examples-and-code)
+  - [Section 3: Performance Metrics](#section-3-performance-metrics)
+    - [Examples and Code](#examples-and-code-1)
+  - [Section 4: Cross-Validation](#section-4-cross-validation)
+    - [Cross-Validation Schemes](#cross-validation-schemes)
+    - [Hyperparameter Tuning with Different Cross-Validation Schemes](#hyperparameter-tuning-with-different-cross-validation-schemes)
+    - [Special Cross-Validation Schemes: Non-Independent Data](#special-cross-validation-schemes-non-independent-data)
+    - [Nested Cross-Validation](#nested-cross-validation)
+  - [Section 5: Basic Search Algorithms: Grid and Random](#section-5-basic-search-algorithms-grid-and-random)
+    - [Manual Search](#manual-search)
+    - [Grid Search](#grid-search)
+    - [Random Search](#random-search)
+    - [Random Search with Other Packages](#random-search-with-other-packages)
+      - [Random Search with Scikit-Optimize](#random-search-with-scikit-optimize)
+      - [Random Search with Hyperopt](#random-search-with-hyperopt)
+  - [Section 6: Bayesian Optimization with Scikit-Optimize](#section-6-bayesian-optimization-with-scikit-optimize)
+    - [Bayesian Inference](#bayesian-inference)
+    - [Bayes Rule](#bayes-rule)
+    - [Sequential Model-Based Optimization (SMBO)](#sequential-model-based-optimization-smbo)
+    - [Literature](#literature)
+    - [Scikit-Optimize for Bayesian Optimization: Notes](#scikit-optimize-for-bayesian-optimization-notes)
+    - [Example: Manual Gaussian Optimization of a Black Box 1D Function](#example-manual-gaussian-optimization-of-a-black-box-1d-function)
+    - [Example: Manual Gaussian Optimiation of a Grandient Boosted Tree with 1 Hyperparameter](#example-manual-gaussian-optimiation-of-a-grandient-boosted-tree-with-1-hyperparameter)
+    - [Example: Manual Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters](#example-manual-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters)
+    - [Example: Automatic Gaussian Optimization of a Grandient Boosted Tree with 4 Hyperparameters (BayesSearchCV)](#example-automatic-gaussian-optimization-of-a-grandient-boosted-tree-with-4-hyperparameters-bayessearchcv)
+    - [Example: Bayes Optimization with Different Kernels (Manual)](#example-bayes-optimization-with-different-kernels-manual)
+    - [Example: Manual Bayesian Optimization of an XGBoost Classifier](#example-manual-bayesian-optimization-of-an-xgboost-classifier)
+    - [Example: Manual Bayesian Optimization of a Keras-CNN](#example-manual-bayesian-optimization-of-a-keras-cnn)
+  - [Section 7: Other Sequential Model-Based Optimization (SMBO) Methods](#section-7-other-sequential-model-based-optimization-smbo-methods)
+    - [SMACs: Sequential Model-Based Algorithm Configuration: Using Tree-Based Models as Surrogates](#smacs-sequential-model-based-algorithm-configuration-using-tree-based-models-as-surrogates)
+    - [TPE: Tree-Structured Parzen Estimators with Hyperopt](#tpe-tree-structured-parzen-estimators-with-hyperopt)
+    - [Comparison of the Algorithms: Which one Should We Use?](#comparison-of-the-algorithms-which-one-should-we-use)
+  - [Section 8: Multi-Fidelity Optimization](#section-8-multi-fidelity-optimization)
+  - [Section 9: Empty](#section-9-empty)
+  - [Section 10: Scikit-Optimize Review and Summary](#section-10-scikit-optimize-review-and-summary)
+    - [Overview of the API](#overview-of-the-api)
+    - [Example Notebooks](#example-notebooks)
+  - [Section 11: Hyperopt Review and Summary](#section-11-hyperopt-review-and-summary)
+    - [Overview of the API](#overview-of-the-api-1)
+    - [Example Notebooks](#example-notebooks-1)
+  - [Section 12: Optuna Guide](#section-12-optuna-guide)
+  - [Section 13: Ax Platform Guide](#section-13-ax-platform-guide)
 
 ## Setup
 
@@ -104,7 +106,7 @@ Links:
 - [Online Course](https://www.courses.trainindata.com/p/hyperparameter-optimization-for-machine-learning)
 - [Github repository](https://github.com/trainindata/hyperparameter-optimization)
 - [Slides](https://www.dropbox.com/sh/wzbn528sxwdc22k/AAD7IJej-9NwcD5bHK8bbMDka?dl=0)
-- [Datasets: MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data): rename the `train.csv` file to be `mnist.csv`.
+- [Datasets: MNIST Kaggle](https://www.kaggle.com/c/digit-recognizer/data).
 
 Environment:
 
@@ -126,10 +128,16 @@ Used datasets:
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_boston
 
+# MNIST Kaggle dataset
+# https://www.kaggle.com/c/digit-recognizer/data
+data = pd.read_csv("../data/train.csv")
+
+# Breast cancer dataset
 breast_cancer_X, breast_cancer_y = load_breast_cancer(return_X_y=True)
 X = pd.DataFrame(breast_cancer_X)
 y = pd.Series(breast_cancer_y).map({0:1, 1:0})
 
+# Boston housing dataset
 boston_X, boston_y = load_boston(return_X_y=True)
 X = pd.DataFrame(boston_X)
 y = pd.Series(boston_y)
@@ -936,8 +944,20 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=0)
 
 # determine the hyperparameter space
+# http://hyperopt.github.io/hyperopt/getting-started/search_spaces/
+# NOTE: q-distributions return a float, thus, sometimes recasting needs to be done!
+# hp.choice: returns one of several options (suitable for categorical hyperparams)
+# hp.randint: returns a random integer between 0 and an upper limit
+# hp.uniform: returns a value uniformly between specified limits
+# hp.quniform: Returns a value like round(uniform(low, high) / q) * q, i.e. sample between min and max in steps of size q
+# hp.loguniform: draws values from exp(uniform(low, high)) so that the logarithm of the returned value is uniformly distributed
+# hp.qloguniform: Returns a value like round(exp(uniform(low, high)) / q) * q (similar use and cautions to hp.quniform but for log-uniform distributions)
+# hp.normal: draws from a normal distribution with specified mu and sigma
+# hp.qnormal: Returns a value like round(normal(mu, sigma) / q) * q
+# hp.lognormal: Returns a value drawn according to exp(normal(mu, sigma)) so that the logarithm of the return value is normally distributed
+# hp.qlognormal: Returns a value like round(exp(normal(mu, sigma)) / q) * q
 param_grid = {
-    'n_estimators': hp.quniform('n_estimators', 200, 2500, 100), # min, max, step
+    'n_estimators': hp.quniform('n_estimators', 200, 2500, 100),
     'max_depth': hp.uniform('max_depth', 1, 10), # min, max
     'learning_rate': hp.uniform('learning_rate', 0.01, 0.99),
     'booster': hp.choice('booster', ['gbtree', 'dart']),
@@ -2344,6 +2364,18 @@ y_test = to_categorical(y_test, num_classes = 10)
 g = plt.imshow(X_train[0][:,:,0])
 
 # determine the hyperparameter space
+# http://hyperopt.github.io/hyperopt/getting-started/search_spaces/
+# NOTE: q-distributions return a float, thus, sometimes recasting needs to be done!
+# hp.choice: returns one of several options (suitable for categorical hyperparams)
+# hp.randint: returns a random integer between 0 and an upper limit
+# hp.uniform: returns a value uniformly between specified limits
+# hp.quniform: Returns a value like round(uniform(low, high) / q) * q, i.e. sample between min and max in steps of size q
+# hp.loguniform: draws values from exp(uniform(low, high)) so that the logarithm of the returned value is uniformly distributed
+# hp.qloguniform: Returns a value like round(exp(uniform(low, high)) / q) * q (similar use and cautions to hp.quniform but for log-uniform distributions)
+# hp.normal: draws from a normal distribution with specified mu and sigma
+# hp.qnormal: Returns a value like round(normal(mu, sigma) / q) * q
+# hp.lognormal: Returns a value drawn according to exp(normal(mu, sigma)) so that the logarithm of the return value is normally distributed
+# hp.qlognormal: Returns a value like round(exp(normal(mu, sigma)) / q) * q
 param_grid = {
     'learning_rate': hp.uniform('learning_rate', 1e-6, 1e-2),
     'num_conv_layers': hp.quniform('num_conv_layers', 1, 3, 1),
@@ -2678,6 +2710,11 @@ A typical **objective function** looks like this:
 
 ```python
 # instantiate model
+# NOTE: we can either
+# 1. instantiate the model outside and then model.set_params(**params)
+# 2. or instantiate a new model inside objective() (as done in the example with the CNN)
+# In the case of a CNN, we `del model` at the end in objective() to free memory
+# I would argue that it's cleaner to instantiate everything inside objective()
 model = GradientBoostingClassifier(random_state=0)
 
 # we pass the hyperparameter space via a decorator
@@ -2919,13 +2956,246 @@ tmp['accuracy'].sort_values(ascending=False).reset_index(drop=True).plot()
 
 ## Section 11: Hyperopt Review and Summary
 
+This section is a review/summary of the [Hyperopt](http://hyperopt.github.io/hyperopt/) library. All the theoretical concepts were already introduced, as well as some `hyperopt` APIs. 
+
+Notes:
+
+- The library is not maintained that frequently. The last release tag v0.2.7 as of today (2023-05) is from 2021-11.
+- The documentation is not very extensive.
+- Hyperopt has a Scikit-Learn-specific library [hyperopt-sklearn](http://hyperopt.github.io/hyperopt-sklearn/), which targets `sklearn` objects specifically; however, it doesn't seem to have a widespread adoption.
+
+List of past sections/notebooks:
+
+- [Section 5 - Random Search with Hyperopt](#random-search-with-hyperopt)
+- [Section 7 - TPE: Tree-Structured Parzen Estimators with Hyperopt](#tpe-tree-structured-parzen-estimators-with-hyperopt)
+
+The advantages compared to Scikit-Optimize could be:
+
+- Implementation of TPE.
+- Advanced hyperparameter spaces: many distributions and nested spaces.
+
+### Overview of the API
+
+**Hyperparameter space** definition is done in a dictionary which takes distributions with built-in objects from the `hp` module:
+
+- Samples Reals, Integers and Categories.
+- In contrast to Scikit-Optimize, we can sample from many distributions.
+- It accepts also nested hyperparameter spaces, i.e., hyperparameters that depend on other hyperparameters; this is the major advantage of Hyperopt. We can even try different models in the tuning process.
+
+```python
+# http://hyperopt.github.io/hyperopt/getting-started/search_spaces/
+# NOTE: q-distributions return a float, thus, sometimes recasting needs to be done!
+# hp.choice: returns one of several options (suitable for categorical hyperparams)
+# hp.randint: returns a random integer between 0 and an upper limit
+# hp.uniform: returns a value uniformly between specified limits
+# hp.quniform: Returns a value like round(uniform(low, high) / q) * q, i.e. sample between min and max in steps of size q
+# hp.loguniform: draws values from exp(uniform(low, high)) so that the logarithm of the returned value is uniformly distributed
+# hp.qloguniform: Returns a value like round(exp(uniform(low, high)) / q) * q (similar use and cautions to hp.quniform but for log-uniform distributions)
+# hp.normal: draws from a normal distribution with specified mu and sigma
+# hp.qnormal: Returns a value like round(normal(mu, sigma) / q) * q
+# hp.lognormal: Returns a value drawn according to exp(normal(mu, sigma)) so that the logarithm of the return value is normally distributed
+# hp.qlognormal: Returns a value like round(exp(normal(mu, sigma)) / q) * q
+param_grid = {
+    'n_estimators': hp.quniform('n_estimators', 200, 2500, 100), # min, max, step
+    'max_depth': hp.uniform('max_depth', 1, 10), # min, max
+    'learning_rate': hp.uniform('learning_rate', 0.01, 0.99),
+    'booster': hp.choice('booster', ['gbtree', 'dart']),
+    'gamma': hp.quniform('gamma', 0.01, 10, 0.1),
+    'subsample': hp.uniform('subsample', 0.50, 0.90),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.50, 0.99),
+    'colsample_bylevel': hp.uniform('colsample_bylevel', 0.50, 0.99),
+    'colsample_bynode': hp.uniform('colsample_bynode', 0.50, 0.99),
+    'reg_lambda': hp.uniform('reg_lambda', 1, 20)
+}
+
+# Example of a nested hyperparameter space
+space = hp.choice('classifier_type', [
+    {
+        'type': 'naive_bayes',
+    },
+    {
+        'type': 'svm',
+        'C': hp.lognormal('svm_C', 0, 1),
+        'kernel': hp.choice('svm_kernel', [
+            {'ktype': 'linear'},
+            {'ktype': 'RBF', 'width': hp.lognormal('svm_rbf_width', 0, 1)},
+            ]),
+    },
+    {
+        'type': 'dtree',
+        'criterion': hp.choice('dtree_criterion', ['gini', 'entropy']),
+        'max_depth': hp.choice('dtree_max_depth',
+            [None, hp.qlognormal('dtree_max_depth_int', 3, 1, 1)]),
+        'min_samples_split': hp.qlognormal('dtree_min_samples_split', 2, 1, 1),
+    },
+    ])
+
+# another nested space in which the models itself is a hyperparameter,
+# i.e., we try different models/algorithms
+param_grid = hp.choice('classifier', [
+    # algo 1
+    {'model': LogisticRegression,
+    'params': {
+        'penalty': hp.choice('penalty', ['l1','l2']),
+        'C' : hp.uniform('C', 0.001, 10),
+        'solver': 'saga', # the only solver that works with both penalties
+    }},
+    
+    # algo 2
+    {'model': RandomForestClassifier,
+    'params': {
+        'n_estimators': hp.quniform('n_estimators_rf', 50, 1500, 50),
+        'max_depth': hp.quniform('max_depth_rf', 1, 5, 1),
+        'criterion': hp.choice('criterion_rf', ['gini', 'entropy']),
+    }},
+    
+    # algo 3
+    {'model': GradientBoostingClassifier,
+    'params': {
+        'n_estimators': hp.quniform('n_estimators_gbm', 50, 1500, 50),
+        'max_depth': hp.quniform('max_depth_gbm', 1, 5, 1),
+        'criterion': hp.choice('criterion_gbm', ['friedman_mse', 'mse']),
+    }},
+])
+```
+
+A typical **objective function** looks like this:
+
+```python
+# the objective function takes one instance from
+# the hyperparameter space as input, not the complete param_grid
+def objective(params):
+    # we need a dictionary to indicate which value from the space
+    # to attribute to each value of the hyperparameter in the xgb
+    params_dict = {
+        # important int, as it takes integers only
+        'n_estimators': int(params['n_estimators']),
+        # important int, as it takes integers only
+        'max_depth': int(params['max_depth']),
+        'learning_rate': params['learning_rate'],
+        'booster': params['booster'],
+        'gamma': params['gamma'],
+        'subsample': params['subsample'],
+        'colsample_bytree': params['colsample_bytree'],
+        'colsample_bylevel': params['colsample_bylevel'],
+        'colsample_bynode': params['colsample_bynode'],
+        'random_state': 1000,
+    }
+
+    # As oposed to Scikit-Optimize, the model is usually instantiated
+    # in the objective()
+    # with ** we pass the items in the dictionary as parameters
+    # to the xgb, our model in this example
+    model = xgb.XGBClassifier(**params_dict)
+
+    # train with cv
+    score = cross_val_score(model,
+                            X_train,
+                            y_train,
+                            scoring='accuracy',
+                            cv=3,
+                            n_jobs=4).mean()
+
+    # to minimize, we negate the score
+    return -score
+```
+
+Available **search algorithms** passed to the optimization function `fmin()` via `algo`:
+
+- `rand.suggest`: Random search.
+- `anneal.suggest`: Simulated Annealing, a Sequential Model-Based approach.
+- `tpe.suggest`: Tree-structured Parzen estimators (TPE), another Sequential Model-Based approach.
+
+```python
+# Track experiment metrics
+trials = Trials()
+
+# fmin performs the minimization
+search = fmin(
+    fn=objective,
+    space=param_grid,
+    max_evals=50, # number of combinations we'd like to randomly test
+    rstate=np.random.default_rng(42),
+    algo=rand.suggest,  # Randomized search
+    #algo=anneal.suggest`,  # Simulated Annealing
+    #algo=tpe.suggest,  # Tree-structured Parzen estimators (TPE)
+	trials=trials
+)
+```
+
+It has a unique **acquisition function** Expected Improvement (EI); it is evaluated in two ways:
+
+- EI evaluated at binomial distributions of the input space for discrete and 
+categorical hyperparameters
+- EI evaluated with CMA-ES for the continuous hyperparameter space
+
+**Results and analysis of the optimization**:
+
+```python
+# The best parameters are in the object returned by fmin
+# and also in the (optional) Trials object
+search
+trials.argmin
+
+# more information from trials
+trials.average_best_error() # best score
+trials.best_trial # dict with infor on best trial
+
+# convergence plot
+pd.Series(trials.losses()).sort_values(ascending=False).reset_index(drop=True).plot()
+
+# we can now extract the best hyperparameters and train a new final model
+def create_param_grid(search, booster):
+    best_hp_dict = {
+            'n_estimators': int(search['n_estimators']), # important int, as it takes integers only
+            'max_depth': int(search['max_depth']), # important int, as it takes integers only
+            'learning_rate': search['learning_rate'],
+            'booster': booster,
+            'gamma': search['gamma'],
+            'subsample': search['subsample'],
+            'colsample_bytree': search['colsample_bytree'],
+            'colsample_bylevel': search['colsample_bylevel'],
+            'colsample_bynode': search['colsample_bynode'],
+            'random_state': 1000,
+    }
+    return best_hp_dict
+
+best_params = create_param_grid(random_search, 'gbtree')
+gbm = xgb.XGBClassifier(**best_params)
+gbm.fit(X_train, y_train)
+
+# create a dataframe with all hyperparam combinations + results
+results = pd.concat([
+    pd.DataFrame(trials.vals),
+    pd.DataFrame(trials.results)],
+    axis=1,
+).sort_values(by='loss', ascending=False).reset_index(drop=True)
+
+# plot convergence again
+results['loss'].plot()
+plt.ylabel('Accuracy')
+plt.xlabel('Hyperparam combination')
+
+```
+
+There are also plotting functions, but they are not documented poperly: [plotting](https://github.com/hyperopt/hyperopt/blob/master/hyperopt/plotting.py).
+
+### Example Notebooks
+
+This is the list of the example notebooks in this section:
+
+- [`01-Hyperparameter-Distributions.ipynb`](./Section-11-Hyperopt/01-Hyperparameter-Distributions.ipynb)
+- [`02-Search-algorithms.ipynb`](./Section-11-Hyperopt/02-Search-algorithms.ipynb)
+- [`03-Evaluating-the-search.ipynb`](./Section-11-Hyperopt/03-Evaluating-the-search.ipynb)
+- [`04-Conditonal-Search-Spaces.ipynb`](./Section-11-Hyperopt/04-Conditonal-Search-Spaces.ipynb)
+- [`05-TPE-with-CNN.ipynb`](./Section-11-Hyperopt/05-TPE-with-CNN.ipynb)
+- [`06-Optional-Sklearn-MLPClassifier.ipynb`](./Section-11-Hyperopt/06-Optional-Sklearn-MLPClassifier.ipynb)
+
+## Section 12: Optuna Guide
 
 
-## Section 12: Optuna Review
 
-
-
-## Section 13: Ax Platform
+## Section 13: Ax Platform Guide
 
 This section was not in the original course and it was added by me; it introduces [Ax, the Adaptive Experimentation Platform](https://ax.dev/).
 
