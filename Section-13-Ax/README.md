@@ -43,11 +43,11 @@ In the following, I comment the examples.
 
 Note that the package has 3 APIs:
 
-- Loop:
-- Service:
-- Developer:
+> - Loop API: The loop API is the most lightweight way to do optimization in Ax. The user makes one call to `optimize`, which performs all of the optimization under the hood and returns the optimized parameters.
+> - Service API: The Ax Service API is designed to allow the user to control scheduling of trials and data computation while having an easy to use interface with Ax.
+> - Developer API: The Developer API is suitable when the user wants maximal customization of the optimization loop.
 
-The first 3 notebooks analyze those APIs with the standard[Hartmann 6](https://www.sfu.ca/~ssurjano/hart6.html) optimization problem. As described in part by ChatGPT
+The first 3 notebooks analyze those APIs with the standard [Hartmann 6](https://www.sfu.ca/~ssurjano/hart6.html) optimization problem. As described in part by ChatGPT
 
 > The Hartmann 6 function is a well-known benchmark function often used in optimization and machine learning. It is a multi-dimensional function with six variables, defined as follows:
 > ```
@@ -88,7 +88,12 @@ The first 3 notebooks analyze those APIs with the standard[Hartmann 6](https://w
 
 Notebook: [`01_gpei_hartmann_loop.ipynb`](01_gpei_hartmann_loop.ipynb)
 
-:construction:
+
+
+```python
+
+```
+
 
 ### Service API
 
