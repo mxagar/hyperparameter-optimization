@@ -25,4 +25,5 @@ jupyterlab
 # ax
 torch
 torchvision
+SQLAlchemy
 ax-platform
